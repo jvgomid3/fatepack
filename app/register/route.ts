@@ -1,0 +1,1 @@
+export { registerHandler as POST } from "../lib/registerHandler"

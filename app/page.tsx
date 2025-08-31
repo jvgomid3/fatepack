@@ -4,7 +4,6 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-
 export default function HomePage() {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
@@ -70,7 +69,7 @@ export default function HomePage() {
     }
   }
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -79,9 +78,34 @@ export default function HomePage() {
       return
     }
 
+    // 1) Envia para o PostgreSQL (sem alterar o seu fluxo/visual)
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          block: formData.block,
+          apartment: formData.apartment,
+          tipo: "morador",
+        }),
+      })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        console.error("API /api/register error:", payload)
+        // mantém seu fluxo mesmo que o backend falhe
+      }
+    } catch (err) {
+      console.error("Falha ao chamar /api/register:", err)
+      // mantém seu fluxo
+    }
+
+    // 2) Mantém seu comportamento atual (localStorage + navegação)
     const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
 
-    // Check if user already exists
     if (users.find((u: any) => u.email === formData.email)) {
       setError("Este email já está cadastrado")
       return
@@ -97,7 +121,6 @@ export default function HomePage() {
 
     localStorage.setItem("registeredUsers", JSON.stringify(users))
 
-    // Auto login after registration
     localStorage.setItem("userType", "morador")
     localStorage.setItem("userName", formData.email.split("@")[0])
     localStorage.setItem("userBlock", formData.block)
