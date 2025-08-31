@@ -25,62 +25,61 @@ export default function HomePage() {
   }
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 11) value = value.slice(0, 11);
+    let value = e.target.value.replace(/\D/g, "")
+    if (value.length > 11) value = value.slice(0, 11)
+    value = value.replace(/^(\d{2})(\d)/g, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2")
+    setFormData({ ...formData, phone: value })
+  }
 
-    value = value
-      .replace(/^(\d{2})(\d)/g, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2");
-
-    setFormData({
-      ...formData,
-      phone: value,
-    });
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  // LOGIN SOMENTE VIA BD
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError?.("")
 
-    if (formData.email === "admin" && formData.password === "admin") {
-      localStorage.setItem("userType", "porteiro")
+    const emailTrim = formData.email.trim().toLowerCase()
+    if (emailTrim === "admin" && formData.password === "admin@admin") {
+      localStorage.setItem("userType", "admin")
       localStorage.setItem("userName", "Administrador")
+      localStorage.removeItem("userBlock")
+      localStorage.removeItem("userApartment")
       router.push("/registrar")
-    } else if (formData.email === "adriana@google.com" && formData.password === "adriana123") {
-      localStorage.setItem("userType", "morador")
-      localStorage.setItem("userName", "Adriana")
-      localStorage.setItem("userBlock", "A")
-      localStorage.setItem("userApartment", "123")
-      router.push("/encomendas")
-    } else {
-      // Check if user exists in localStorage
-      const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
-      const user = users.find((u: any) => u.email === formData.email && u.password === formData.password)
+      return
+    }
 
-      if (user) {
-        localStorage.setItem("userType", "morador")
-        localStorage.setItem("userName", user.email.split("@")[0])
-        localStorage.setItem("userBlock", user.block)
-        localStorage.setItem("userApartment", user.apartment)
-        router.push("/encomendas")
-      } else {
-        setError("Usuário ou senha incorretos")
-      }
+    // 2) Fluxo atual (moradores via BD)
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "Falha no login")
+
+      localStorage.setItem("userType", data.tipo || "morador")
+      localStorage.setItem("userName", data.name || data.email.split("@")[0])
+      if (data.block) localStorage.setItem("userBlock", String(data.block))
+      if (data.apartment) localStorage.setItem("userApartment", String(data.apartment))
+
+      router.push("/encomendas")
+    } catch (err: any) {
+      setError(err.message || "Erro ao autenticar")
     }
   }
 
+  // CADASTRO NO BD e depois login no BD
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!formData.email || !formData.password || !formData.phone || !formData.block || !formData.apartment) {
+    if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.block || !formData.apartment) {
       setError("Todos os campos são obrigatórios")
       return
     }
 
-    // 1) Envia para o PostgreSQL (sem alterar o seu fluxo/visual)
     try {
-      const res = await fetch("/api/register", {
+      // cria no BD
+      const r1 = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -93,40 +92,27 @@ export default function HomePage() {
           tipo: "morador",
         }),
       })
-      const payload = await res.json().catch(() => null)
-      if (!res.ok) {
-        console.error("API /api/register error:", payload)
-        // mantém seu fluxo mesmo que o backend falhe
-      }
-    } catch (err) {
-      console.error("Falha ao chamar /api/register:", err)
-      // mantém seu fluxo
+      const p1 = await r1.json().catch(() => null)
+      if (!r1.ok) throw new Error(p1?.error || "Erro ao cadastrar")
+
+      // autentica no BD
+      const r2 = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      })
+      const p2 = await r2.json().catch(() => null)
+      if (!r2.ok) throw new Error(p2?.error || "Falha ao autenticar")
+
+      localStorage.setItem("userType", p2.tipo || "morador")
+      localStorage.setItem("userName", p2.name || formData.email.split("@")[0])
+      if (p2.block) localStorage.setItem("userBlock", String(p2.block))
+      if (p2.apartment) localStorage.setItem("userApartment", String(p2.apartment))
+
+      router.push("/encomendas")
+    } catch (err: any) {
+      setError(err.message || "Erro ao cadastrar")
     }
-
-    // 2) Mantém seu comportamento atual (localStorage + navegação)
-    const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
-
-    if (users.find((u: any) => u.email === formData.email)) {
-      setError("Este email já está cadastrado")
-      return
-    }
-
-    users.push({
-      email: formData.email,
-      password: formData.password,
-      phone: formData.phone,
-      block: formData.block,
-      apartment: formData.apartment,
-    })
-
-    localStorage.setItem("registeredUsers", JSON.stringify(users))
-
-    localStorage.setItem("userType", "morador")
-    localStorage.setItem("userName", formData.email.split("@")[0])
-    localStorage.setItem("userBlock", formData.block)
-    localStorage.setItem("userApartment", formData.apartment)
-
-    router.push("/encomendas")
   }
 
   return (

@@ -93,10 +93,16 @@ export async function POST(req: Request) {
 
     const senha_hash = await bcrypt.hash(password, 10)
 
+    // normaliza para caber nos varchar (10/20)
+    const blocoStr = String(block ?? "").trim().slice(0, 10)
+    const aptoStr  = String(apartment ?? "").trim().slice(0, 20)
+    const phoneDigits = String(phone ?? "").replace(/\D/g, "") || null
+
     const u = await client.query(
-      `INSERT INTO usuario (nome, email, senha_hash, telefone, tipo)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id_usuario`,
-      [name, email, senha_hash, phone || null, tipo || "morador"]
+      `INSERT INTO usuario (nome, email, senha_hash, telefone, tipo, bloco, apto)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING id_usuario`,
+      [name, email, senha_hash, phoneDigits, tipo || "morador", blocoStr, aptoStr]
     )
     const id_usuario = u.rows[0].id_usuario
 

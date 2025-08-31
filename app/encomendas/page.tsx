@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import AdminMenu from "../components/AdminMenu"
 
 interface Encomenda {
   id: string
@@ -21,12 +22,18 @@ export default function EncomendasPage() {
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [apartamentoFiltro, setApartamentoFiltro] = useState("")
   const [user, setUser] = useState<any>(null)
+  const [myBlock, setMyBlock] = useState<string | null>(null)
+  const [myApt, setMyApt] = useState<string | null>(null)
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
-    setUser(userData)
+    const t = localStorage.getItem("userType")
+    if (t === "admin") setUser({ tipo: "admin" })
+    else setUser(userData)
 
-    // Carregar encomendas do localStorage
+    setMyBlock(localStorage.getItem("userBlock"))
+    setMyApt(localStorage.getItem("userApartment"))
+
     const encomendasSalvas = JSON.parse(localStorage.getItem("encomendas") || "[]")
     setEncomendas(encomendasSalvas)
   }, [])
@@ -48,109 +55,129 @@ export default function EncomendasPage() {
     localStorage.setItem("encomendas", JSON.stringify(encomendasAtualizadas))
   }
 
+  const isAdmin = user?.tipo === "admin"
+
+  // Base: admin vê todas; morador vê apenas dele (bloco/apto)
+  const base = isAdmin
+    ? encomendas
+    : encomendas.filter((enc) => {
+        const okBloco = myBlock ? enc.bloco === myBlock : false
+        const okApt = myApt ? enc.apartamento === myApt : false
+        return okBloco && okApt
+      })
+
+  // Filtro adicional por input (opcional)
   const encomendasFiltradas = apartamentoFiltro
-    ? encomendas.filter((enc) => enc.apartamento === apartamentoFiltro)
-    : encomendas
+    ? base.filter((enc) => enc.apartamento === apartamentoFiltro)
+    : base
 
   const encomendasNovas = encomendasFiltradas.filter((enc) => enc.isNew)
   const encomendasVistas = encomendasFiltradas.filter((enc) => !enc.isNew)
 
   return (
-    <div className="container">
-      <div className="main-content">
-        <Link href="/" className="back-link">
-          ← Voltar ao início
-        </Link>
-
-        <div className="header">
-          <h1>Minhas Encomendas</h1>
-          <p>Visualize suas encomendas recebidas</p>
-        </div>
-
-        <div className="card">
-          <div className="form-group">
-            <label className="form-label">Filtrar por Apartamento</label>
-            <input
-              type="text"
-              className="form-input"
-              value={apartamentoFiltro}
-              onChange={(e) => setApartamentoFiltro(e.target.value)}
-              placeholder="Digite o número do apartamento (ex: 101)"
-            />
-          </div>
-        </div>
-
-        {encomendasNovas.length > 0 && (
-          <div>
-            <h2 style={{ color: "var(--accent)", marginBottom: "1rem", fontSize: "1.25rem" }}>
-              📦 Novas Encomendas ({encomendasNovas.length})
-            </h2>
-            {encomendasNovas.map((encomenda) => (
-              <PackageCard
-                key={encomenda.id}
-                encomenda={encomenda}
-                isNew={true}
-                user={user}
-                onMarcarVista={marcarComoVista}
-                onMarcarEntregue={marcarComoEntregue}
-              />
-            ))}
-          </div>
-        )}
-
-        {encomendasVistas.length > 0 && (
-          <div>
-            <h2
-              style={{ color: "var(--muted-foreground)", marginBottom: "1rem", fontSize: "1.25rem", marginTop: "2rem" }}
-            >
-              📋 Encomendas Anteriores ({encomendasVistas.length})
-            </h2>
-            {encomendasVistas.map((encomenda) => (
-              <PackageCard
-                key={encomenda.id}
-                encomenda={encomenda}
-                isNew={false}
-                user={user}
-                onMarcarVista={marcarComoVista}
-                onMarcarEntregue={marcarComoEntregue}
-              />
-            ))}
-          </div>
-        )}
-
-        {encomendasFiltradas.length === 0 && (
-          <div className="empty-state">
-            <h3>📭 Nenhuma encomenda encontrada</h3>
-            <p>
-              {apartamentoFiltro
-                ? `Não há encomendas para o apartamento ${apartamentoFiltro}`
-                : "Não há encomendas registradas no momento"}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <nav className="nav-menu">
-        <Link href="/" className="nav-item">
-          <div className="nav-icon">🏠</div>
-          Início
-        </Link>
-        {user?.tipo === "admin" && (
-          <Link href="/registrar" className="nav-item">
-            <div className="nav-icon">📦</div>
-            Registrar
+    <>
+      <div className="container">
+        <div className="main-content">
+          <Link href="/" className="back-link">
+            ← Voltar ao início
           </Link>
-        )}
-        <Link href="/encomendas" className="nav-item active">
-          <div className="nav-icon">📋</div>
-          Encomendas
-        </Link>
-        <Link href="/historico" className="nav-item">
-          <div className="nav-icon">📊</div>
-          Histórico
-        </Link>
-      </nav>
-    </div>
+
+          <div className="header">
+            <h1>Minhas Encomendas</h1>
+            <p>Visualize suas encomendas recebidas</p>
+          </div>
+
+          <div className="card">
+            <div className="form-group">
+              <label className="form-label">Filtrar por Apartamento</label>
+              <input
+                type="text"
+                className="form-input"
+                value={apartamentoFiltro}
+                onChange={(e) => setApartamentoFiltro(e.target.value)}
+                placeholder="Digite o número do apartamento (ex: 101)"
+              />
+            </div>
+          </div>
+
+          {encomendasNovas.length > 0 && (
+            <div>
+              <h2 style={{ color: "var(--accent)", marginBottom: "1rem", fontSize: "1.25rem" }}>
+                📦 Novas Encomendas ({encomendasNovas.length})
+              </h2>
+              {encomendasNovas.map((encomenda) => (
+                <PackageCard
+                  key={encomenda.id}
+                  encomenda={encomenda}
+                  isNew={true}
+                  user={user}
+                  onMarcarVista={marcarComoVista}
+                  onMarcarEntregue={marcarComoEntregue}
+                />
+              ))}
+            </div>
+          )}
+
+          {encomendasVistas.length > 0 && (
+            <div>
+              <h2
+                style={{ color: "var(--muted-foreground)", marginBottom: "1rem", fontSize: "1.25rem", marginTop: "2rem" }}
+              >
+                📋 Encomendas Anteriores ({encomendasVistas.length})
+              </h2>
+              {encomendasVistas.map((encomenda) => (
+                <PackageCard
+                  key={encomenda.id}
+                  encomenda={encomenda}
+                  isNew={false}
+                  user={user}
+                  onMarcarVista={marcarComoVista}
+                  onMarcarEntregue={marcarComoEntregue}
+                />
+              ))}
+            </div>
+          )}
+
+          {encomendasFiltradas.length === 0 && (
+            <div className="empty-state">
+              <h3>📭 Nenhuma encomenda encontrada</h3>
+              <p>
+                {apartamentoFiltro
+                  ? `Não há encomendas para o apartamento ${apartamentoFiltro}`
+                  : "Não há encomendas registradas no momento"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <nav className="nav-menu">
+          <Link href="/" className="nav-item">
+            <div className="nav-icon">🏠</div>
+            Início
+          </Link>
+
+          {isAdmin ? (
+            <>
+              <Link href="/registrar" className="nav-item">
+                <div className="nav-icon">📦</div>
+                Registrar Encomendas
+              </Link>
+              <Link href="/historico" className="nav-item">
+                <div className="nav-icon">📊</div>
+                Histórico
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/encomendas" className="nav-item active">
+                <div className="nav-icon">📋</div>
+                Encomendas
+              </Link>
+            </>
+          )}
+        </nav>
+      </div>
+    </>
   )
 }
 
@@ -207,10 +234,10 @@ function PackageCard({
               <p style={{ color: "var(--success)", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
                 ✅ Encomenda Retirada
               </p>
-              <p style={{ margin: "0", fontSize: "0.9rem" }}>
+              <p style={{ margin: 0, fontSize: "0.9rem" }}>
                 <strong>Retirado em:</strong> {encomenda.dataRetirada}
               </p>
-              <p style={{ margin: "0", fontSize: "0.9rem" }}>
+              <p style={{ margin: 0, fontSize: "0.9rem" }}>
                 <strong>Retirado por:</strong> {encomenda.retiradoPor}
               </p>
             </div>

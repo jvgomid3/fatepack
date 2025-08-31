@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import AdminGate from "../components/AdminGate"
 
 interface Encomenda {
   id: string
@@ -24,6 +24,7 @@ export default function RegistrarPage() {
   const [empresa, setEmpresa] = useState("")
   const [showAlert, setShowAlert] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const blocos = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 
@@ -34,6 +35,7 @@ export default function RegistrarPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser") || "{}")
     setCurrentUser(user)
+    setIsAdmin(localStorage.getItem("userType") === "admin")
   }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,107 +78,120 @@ export default function RegistrarPage() {
   }
 
   return (
-    <div className="container">
-      <div className="main-content">
-        <Link href="/" className="back-link">
-          ← Voltar ao início
-        </Link>
+    <>
+      <AdminGate />
+      <div className="container">
+        <div className="main-content">
+          <Link href="/" className="back-link">
+            ← Voltar ao início
+          </Link>
 
-        <div className="header">
-          <h1>Registrar Encomenda</h1>
-          <p>Preencha os dados da encomenda recebida</p>
-        </div>
-
-        {showAlert && (
-          <div className="alert success">
-            ✅ Encomenda registrada com sucesso! O morador será notificado.
-            <br />
-            <small>Recebido por {currentUser?.email || "admin"}</small>
+          <div className="header">
+            <h1>Registrar Encomenda</h1>
+            <p>Preencha os dados da encomenda recebida</p>
           </div>
-        )}
 
-        <div className="card">
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Bloco</label>
-                <select className="form-select" value={bloco} onChange={(e) => setBloco(e.target.value)} required>
-                  <option value="">Selecione o bloco</option>
-                  {blocos.map((b) => (
-                    <option key={b} value={b}>
-                      Bloco {b}
-                    </option>
-                  ))}
-                </select>
+          {showAlert && (
+            <div className="alert success">
+              ✅ Encomenda registrada com sucesso! O morador será notificado.
+              <br />
+              <small>Recebido por {currentUser?.email || "admin"}</small>
+            </div>
+          )}
+
+          <div className="card">
+            <form onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Bloco</label>
+                  <select className="form-select" value={bloco} onChange={(e) => setBloco(e.target.value)} required>
+                    <option value="">Selecione o bloco</option>
+                    {blocos.map((b) => (
+                      <option key={b} value={b}>
+                        Bloco {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Apartamento</label>
+                  <select
+                    className="form-select"
+                    value={apartamento}
+                    onChange={(e) => setApartamento(e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione o apartamento</option>
+                    {apartamentos.map((apt) => (
+                      <option key={apt} value={apt}>
+                        Apt {apt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Apartamento</label>
-                <select
-                  className="form-select"
-                  value={apartamento}
-                  onChange={(e) => setApartamento(e.target.value)}
+                <label className="form-label">Nome do Morador</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={morador}
+                  onChange={(e) => setMorador(e.target.value)}
+                  placeholder="Digite o nome do morador"
                   required
-                >
-                  <option value="">Selecione o apartamento</option>
-                  {apartamentos.map((apt) => (
-                    <option key={apt} value={apt}>
-                      Apt {apt}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Empresa de Entrega</label>
+                <select className="form-select" value={empresa} onChange={(e) => setEmpresa(e.target.value)} required>
+                  <option value="">Selecione a empresa</option>
+                  {empresas.map((emp) => (
+                    <option key={emp} value={emp}>
+                      {emp}
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">Nome do Morador</label>
-              <input
-                type="text"
-                className="form-input"
-                value={morador}
-                onChange={(e) => setMorador(e.target.value)}
-                placeholder="Digite o nome do morador"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Empresa de Entrega</label>
-              <select className="form-select" value={empresa} onChange={(e) => setEmpresa(e.target.value)} required>
-                <option value="">Selecione a empresa</option>
-                {empresas.map((emp) => (
-                  <option key={emp} value={emp}>
-                    {emp}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button type="submit" className="btn btn-primary">
-              📦 Registrar Encomenda
-            </button>
-          </form>
+              <button type="submit" className="btn btn-primary">
+                📦 Registrar Encomenda
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
 
-      <nav className="nav-menu">
-        <Link href="/" className="nav-item">
-          <div className="nav-icon">🏠</div>
-          Início
-        </Link>
-        <Link href="/registrar" className="nav-item active">
-          <div className="nav-icon">📦</div>
-          Registrar
-        </Link>
-        <Link href="/encomendas" className="nav-item">
-          <div className="nav-icon">📋</div>
-          Encomendas
-        </Link>
-        <Link href="/historico" className="nav-item">
-          <div className="nav-icon">📊</div>
-          Histórico
-        </Link>
-      </nav>
-    </div>
+        <nav className="nav-menu">
+          <Link href="/" className="nav-item">
+            <div className="nav-icon">🏠</div>
+            Início
+          </Link>
+
+          {isAdmin ? (
+            <>
+              <Link href="/registrar" className="nav-item active">
+                <div className="nav-icon">📦</div>
+                Registrar
+              </Link>
+              <Link href="/historico" className="nav-item">
+                <div className="nav-icon">📊</div>
+                Histórico
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/encomendas" className="nav-item">
+                <div className="nav-icon">📋</div>
+                Encomendas
+              </Link>
+            </>
+          )}
+        </nav>
+      </div>
+    </>
   )
 }
+
+
