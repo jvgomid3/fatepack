@@ -13,6 +13,7 @@ interface Encomenda {
   dataRecebimento: string
   status: string
   isNew: boolean
+  recebidoPor?: string // novo
   retiradoPor?: string
   dataRetirada?: string
   entregue?: boolean

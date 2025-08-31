@@ -14,7 +14,7 @@ interface Encomenda {
   dataRecebimento: string
   status: string
   isNew: boolean
-  recebidoPor: string // Added field to track who received the package
+  recebidoPor?: string // novo
 }
 
 export default function RegistrarPage() {
@@ -25,6 +25,9 @@ export default function RegistrarPage() {
   const [showAlert, setShowAlert] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+
+  // novo estado para o nome de quem recebeu
+  const [recebidoPor, setRecebidoPor] = useState("") // mantém vazio ao carregar
 
   const blocos = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 
@@ -46,7 +49,8 @@ export default function RegistrarPage() {
       return
     }
 
-    // Simular salvamento da encomenda
+    const nomeRecebedor = recebidoPor.trim()
+
     const novaEncomenda: Encomenda = {
       id: Date.now().toString(),
       bloco,
@@ -54,9 +58,9 @@ export default function RegistrarPage() {
       morador,
       empresa,
       dataRecebimento: new Date().toLocaleString("pt-BR"),
-      status: `Recebido por ${currentUser?.email || "admin"}`,
+      status: `Recebido por ${nomeRecebedor}`, // usa o campo digitado
       isNew: true,
-      recebidoPor: currentUser?.email || "admin", // Added who received the package
+      recebidoPor: nomeRecebedor, // persiste no objeto
     }
 
     // Salvar no localStorage para simular persistência
@@ -67,11 +71,12 @@ export default function RegistrarPage() {
     // Mostrar confirmação
     setShowAlert(true)
 
-    // Limpar formulário
+    // Limpar formulário (inclui o campo Recebido por)
     setBloco("")
     setApartamento("")
     setMorador("")
     setEmpresa("")
+    setRecebidoPor("") // deixa em branco após salvar
 
     // Esconder alerta após 3 segundos
     setTimeout(() => setShowAlert(false), 3000)
@@ -95,7 +100,7 @@ export default function RegistrarPage() {
             <div className="alert success">
               ✅ Encomenda registrada com sucesso! O morador será notificado.
               <br />
-              <small>Recebido por {currentUser?.email || "admin"}</small>
+              <small>Recebido por {recebidoPor.trim()}</small> {/* mostra o digitado */}
             </div>
           )}
 
@@ -154,6 +159,19 @@ export default function RegistrarPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Campo novo: Recebido por */}
+              <div className="form-group">
+                <label className="form-label">Recebido por</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={recebidoPor}
+                  onChange={(e) => setRecebidoPor(e.target.value)}
+                  placeholder="Nome de quem recebeu a encomenda"
+                  required
+                />
               </div>
 
               <button type="submit" className="btn btn-primary">

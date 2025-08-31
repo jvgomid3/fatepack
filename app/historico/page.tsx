@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
 
@@ -25,6 +25,7 @@ export default function HistoricoPage() {
   const [user, setUser] = useState<any>(null)
   const [showInputId, setShowInputId] = useState<string | null>(null)
   const [nomeRetirada, setNomeRetirada] = useState("")
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
@@ -32,6 +33,8 @@ export default function HistoricoPage() {
 
     const encomendasSalvas = JSON.parse(localStorage.getItem("encomendas") || "[]")
     setEncomendas(encomendasSalvas)
+
+    setIsAdmin(localStorage.getItem("userType") === "admin")
   }, [])
 
   const empresasUnicas = [...new Set(encomendas.map((enc) => enc.empresa))].sort()
@@ -271,20 +274,24 @@ export default function HistoricoPage() {
             <div className="nav-icon">🏠</div>
             Início
           </Link>
-          {user?.tipo === "admin" && (
-            <Link href="/registrar" className="nav-item">
-              <div className="nav-icon">📦</div>
-              Registrar
+
+          {isAdmin ? (
+            <>
+              <Link href="/registrar" className="nav-item">
+                <div className="nav-icon">📦</div>
+                Registrar
+              </Link>
+              <Link href="/historico" className="nav-item active">
+                <div className="nav-icon">📊</div>
+                Histórico
+              </Link>
+            </>
+          ) : (
+            <Link href="/encomendas" className="nav-item">
+              <div className="nav-icon">📋</div>
+              Encomendas
             </Link>
           )}
-          <Link href="/encomendas" className="nav-item">
-            <div className="nav-icon">📋</div>
-            Encomendas
-          </Link>
-          <Link href="/historico" className="nav-item active">
-            <div className="nav-icon">📊</div>
-            Histórico
-          </Link>
         </nav>
       </div>
     </>
