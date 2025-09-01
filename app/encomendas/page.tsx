@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 
@@ -25,6 +25,9 @@ export default function EncomendasPage() {
   const [user, setUser] = useState<any>(null)
   const [myBlock, setMyBlock] = useState<string | null>(null)
   const [myApt, setMyApt] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState("")
+  const backLinkRef = useRef<HTMLAnchorElement | null>(null)   // novo
+  const helloRef = useRef<HTMLSpanElement | null>(null)        // novo
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
@@ -37,6 +40,23 @@ export default function EncomendasPage() {
 
     const encomendasSalvas = JSON.parse(localStorage.getItem("encomendas") || "[]")
     setEncomendas(encomendasSalvas)
+
+    // nome para saudação
+    const name =
+      localStorage.getItem("userName") ||
+      userData?.nome ||
+      userData?.name ||
+      (userData?.email ? String(userData.email).split("@")[0] : "") ||
+      "usuario"
+    setDisplayName(name)
+
+    // iguala a cor do "Olá, ..." à cor do link "Voltar ao início"
+    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+    const helloEl = helloRef.current
+    if (linkEl && helloEl) {
+      const cs = window.getComputedStyle(linkEl)
+      helloEl.style.color = cs.color
+    }
   }, [])
 
   const marcarComoVista = (id: string) => {
@@ -79,9 +99,12 @@ export default function EncomendasPage() {
     <>
       <div className="container">
         <div className="main-content">
-          <Link href="/" className="back-link">
-            ← Voltar ao início
-          </Link>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
+              Olá, {displayName || "usuario"}!
+            </span>
+          </div>
 
           <div className="header">
             <h1>Minhas Encomendas</h1>
