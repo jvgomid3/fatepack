@@ -29,6 +29,7 @@ export default function RegistrarPage() {
   const [apartamento, setApartamento] = useState("")
   const [morador, setMorador] = useState("")
   const [empresa, setEmpresa] = useState("")
+  const [empresaIsOutro, setEmpresaIsOutro] = useState(false) // novo
   const [showAlert, setShowAlert] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -40,7 +41,7 @@ export default function RegistrarPage() {
 
   const apartamentos = ["01", "02", "03", "04", "11", "12", "13", "14", "21", "22", "23", "24", "31", "32", "33", "34"]
 
-  const empresas = ["Correios", "Jadlog", "Rodonaves", "Mercado Livre", "Amazon", "Outros"]
+  const empresas = ["Correios", "Jadlog", "Rodonaves", "Mercado Livre", "Amazon", "Outra empresa"]
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser") || "{}")
@@ -63,7 +64,7 @@ export default function RegistrarPage() {
       bloco,
       apartamento,
       morador: capFirst(morador.trim()), // Aplica capitalização
-      empresa: capFirst(empresa.trim()), // Aplica capitalização
+      empresa: capFirst(empresa.trim()), // mantém capitalização
       dataRecebimento: new Date().toLocaleString("pt-BR"),
       status: `Recebido por ${nomeRecebedor}`, // usa o campo digitado
       isNew: true,
@@ -83,6 +84,7 @@ export default function RegistrarPage() {
     setApartamento("")
     setMorador("")
     setEmpresa("")
+    setEmpresaIsOutro(false) // reset do modo "Outros"
     setRecebidoPor("") // deixa em branco após salvar
 
     // Esconder alerta após 3 segundos
@@ -162,8 +164,17 @@ export default function RegistrarPage() {
                 <label className="form-label">Empresa</label>
                 <select
                   className="form-select"
-                  value={empresa}
-                  onChange={(e) => setEmpresa(e.target.value)}
+                  value={empresaIsOutro ? "Outra empresa" : empresa}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === "Outra empresa") {
+                      setEmpresaIsOutro(true)
+                      setEmpresa("") // passa a digitar no input abaixo
+                    } else {
+                      setEmpresaIsOutro(false)
+                      setEmpresa(v)
+                    }
+                  }}
                   required
                 >
                   <option value="">Selecione a empresa</option>
@@ -174,6 +185,21 @@ export default function RegistrarPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Campo aparece só quando selecionar "Outros" */}
+              {empresaIsOutro && (
+                <div className="form-group">
+                  <label className="form-label">Outra empresa</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={empresa}
+                    onChange={(e) => setEmpresa(capFirst(e.target.value))}
+                    placeholder="Digite o nome da empresa"
+                    required
+                  />
+                </div>
+              )}
 
               {/* Campo novo: Recebido por */}
               <div className="form-group">
