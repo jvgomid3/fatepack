@@ -4,6 +4,13 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+// Capitaliza a primeira letra (ignora espaços iniciais)
+const capFirst = (s: string) => {
+  const i = s.search(/\S/)
+  if (i === -1) return ""
+  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
+}
+
 export default function HomePage() {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
@@ -67,6 +74,15 @@ export default function HomePage() {
     }
   }
 
+  // Handler genérico de mudanças no formulário de cadastro
+  const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData((prev: any) => ({
+      ...prev,
+      [name]: name === "name" ? capFirst(value) : value,
+    }))
+  }
+
   // CADASTRO NO BD e depois login no BD
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,19 +94,21 @@ export default function HomePage() {
     }
 
     try {
+      const payload = {
+        name: capFirst(formData.name.trim()),
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        block: formData.block,
+        apartment: formData.apartment,
+        tipo: "morador",
+      }
+
       // cria no BD
       const r1 = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          phone: formData.phone,
-          block: formData.block,
-          apartment: formData.apartment,
-          tipo: "morador",
-        }),
+        body: JSON.stringify(payload),
       })
       const p1 = await r1.json().catch(() => null)
       if (!r1.ok) throw new Error(p1?.error || "Erro ao cadastrar")
@@ -256,7 +274,7 @@ export default function HomePage() {
                 id="nome"
                 name="name" // <-- Corrigido aqui!
                 value={formData.name}
-                onChange={handleInputChange}
+                onChange={handleRegisterChange}
                 placeholder="Insira seu nome"
                 required
                 style={{
