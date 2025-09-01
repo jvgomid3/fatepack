@@ -214,9 +214,11 @@ export default function RegistrarPage() {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary">
-                📦 Registrar Encomenda
-              </button>
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "0.75rem" }}>
+                <button type="submit" className="btn btn-primary">
+                  📦 Registrar Encomenda
+                </button>
+              </div>
             </form>
           </div>
         </div>
