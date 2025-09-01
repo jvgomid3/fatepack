@@ -95,6 +95,13 @@ export default function EncomendasPage() {
   const encomendasNovas = encomendasFiltradas.filter((enc) => enc.isNew)
   const encomendasVistas = encomendasFiltradas.filter((enc) => !enc.isNew)
 
+  // Capitaliza a primeira letra não-espaço
+  const capFirst = (s: string) => {
+    const i = s.search(/\S/)
+    if (i === -1) return ""
+    return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
+  }
+
   return (
     <>
       <div className="container">
@@ -298,7 +305,7 @@ function PackageCard({
               type="text"
               className="form-input"
               value={retiradoPor}
-              onChange={(e) => setRetiradoPor(e.target.value)}
+              onChange={(e) => setRetiradoPor(capFirst(e.target.value))} // <- aplica capitalização
               placeholder="Nome de quem retirou a encomenda"
             />
           </div>

@@ -17,6 +17,13 @@ interface Encomenda {
   recebidoPor?: string // novo
 }
 
+// Capitaliza a primeira letra não-espaço
+const capFirst = (s: string) => {
+  const i = s.search(/\S/)
+  if (i === -1) return ""
+  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
+}
+
 export default function RegistrarPage() {
   const [bloco, setBloco] = useState("")
   const [apartamento, setApartamento] = useState("")
@@ -55,12 +62,12 @@ export default function RegistrarPage() {
       id: Date.now().toString(),
       bloco,
       apartamento,
-      morador,
-      empresa,
+      morador: capFirst(morador.trim()), // Aplica capitalização
+      empresa: capFirst(empresa.trim()), // Aplica capitalização
       dataRecebimento: new Date().toLocaleString("pt-BR"),
       status: `Recebido por ${nomeRecebedor}`, // usa o campo digitado
       isNew: true,
-      recebidoPor: nomeRecebedor, // persiste no objeto
+      recebidoPor: capFirst(nomeRecebedor), // persiste no objeto e aplica capitalização
     }
 
     // Salvar no localStorage para simular persistência
@@ -137,21 +144,28 @@ export default function RegistrarPage() {
                 </div>
               </div>
 
+              {/* Nome do Morador */}
               <div className="form-group">
                 <label className="form-label">Nome do Morador</label>
                 <input
                   type="text"
                   className="form-input"
                   value={morador}
-                  onChange={(e) => setMorador(e.target.value)}
-                  placeholder="Digite o nome do morador"
+                  onChange={(e) => setMorador(capFirst(e.target.value))} // <- aplica capitalização
+                  placeholder="Ex.: Maria Silva"
                   required
                 />
               </div>
 
+              {/* Empresa de Entrega */}
               <div className="form-group">
-                <label className="form-label">Empresa de Entrega</label>
-                <select className="form-select" value={empresa} onChange={(e) => setEmpresa(e.target.value)} required>
+                <label className="form-label">Empresa</label>
+                <select
+                  className="form-select"
+                  value={empresa}
+                  onChange={(e) => setEmpresa(e.target.value)}
+                  required
+                >
                   <option value="">Selecione a empresa</option>
                   {empresas.map((emp) => (
                     <option key={emp} value={emp}>
@@ -168,7 +182,7 @@ export default function RegistrarPage() {
                   type="text"
                   className="form-input"
                   value={recebidoPor}
-                  onChange={(e) => setRecebidoPor(e.target.value)}
+                  onChange={(e) => setRecebidoPor(capFirst(e.target.value))} // <- aplica capitalização
                   placeholder="Nome de quem recebeu a encomenda"
                   required
                 />
