@@ -22,6 +22,7 @@ export default function HomePage() {
     apartment: "",
   })
   const [error, setError] = useState("")
+  const [registerLoading, setRegisterLoading] = useState(false) // <- novo
   const router = useRouter()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -87,13 +88,13 @@ export default function HomePage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-
     if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.block || !formData.apartment) {
       setError("Todos os campos são obrigatórios")
       return
     }
 
     try {
+      setRegisterLoading(true) // <- inicia animação
       const payload = {
         name: capFirst(formData.name.trim()),
         email: formData.email,
@@ -104,7 +105,6 @@ export default function HomePage() {
         tipo: "morador",
       }
 
-      // cria no BD
       const r1 = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +113,6 @@ export default function HomePage() {
       const p1 = await r1.json().catch(() => null)
       if (!r1.ok) throw new Error(p1?.error || "Erro ao cadastrar")
 
-      // autentica no BD
       const r2 = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,6 +129,8 @@ export default function HomePage() {
       router.push("/encomendas")
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar")
+    } finally {
+      setRegisterLoading(false) // <- encerra animação
     }
   }
 
@@ -441,7 +442,8 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="btn btn-primary"
+              className={`btn btn-primary ${registerLoading ? "btn-loading" : ""}`}
+              disabled={registerLoading}
               style={{
                 width: "100%",
                 padding: "14px",
@@ -449,13 +451,36 @@ export default function HomePage() {
                 fontSize: "16px",
                 fontWeight: "600",
                 marginTop: "1rem",
+                opacity: registerLoading ? 0.95 : 1,
+                cursor: registerLoading ? "not-allowed" : "pointer",
               }}
             >
-              Cadastrar
+              {registerLoading ? "Cadastrando..." : "Cadastrar"}
             </button>
           </form>
         )}
       </div>
+
+      {/* estilos da animação */}
+      <style jsx>{`
+        @keyframes btnGradientMove {
+          0%   { background-position: 0% 0%; }
+          100% { background-position: -200% 0%; }
+        }
+        .btn-loading {
+          position: relative;
+          color: #fff !important;
+          background-image: linear-gradient(
+            90deg,
+            var(--primary, #06b6d4) 0%,
+            #3fd5e6 50%,
+            var(--primary, #06b6d4) 100%
+          );
+          background-size: 200% 100%;
+          animation: btnGradientMove 1.1s linear infinite;
+          border: none;
+        }
+      `}</style>
     </div>
   )
 }
