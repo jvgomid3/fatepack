@@ -14,7 +14,6 @@ interface Encomenda {
   status: string
   isNew?: boolean
   recebidoPor?: string
-  // novo: status de retirada
   entregue?: boolean
   retiradoPor?: string
   dataRetirada?: string
@@ -27,8 +26,10 @@ export default function EncomendasPage() {
   const [myBlock, setMyBlock] = useState<string | null>(null)
   const [myApt, setMyApt] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState("")
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)   // novo
-  const helloRef = useRef<HTMLSpanElement | null>(null)        // novo
+  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const helloRef = useRef<HTMLSpanElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
@@ -48,7 +49,7 @@ export default function EncomendasPage() {
       "usuario"
     setDisplayName(name)
 
-    // iguala a cor do "Olá, ..." à cor do link "Voltar ao início"
+    // iguala a cor do "Olá, ..." à cor do link "← Sair"
     const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
     const helloEl = helloRef.current
     if (linkEl && helloEl) {
@@ -63,21 +64,22 @@ export default function EncomendasPage() {
         const data = await res.json().catch(() => null)
         if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
 
-        const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
-          id: String(row.id_encomenda ?? ""),
-          bloco: String(row.bloco ?? ""),
-          apartamento: String(row.apartamento ?? ""),
-          morador: String(row.nome ?? ""),
-          empresa: String(row.empresa_entrega ?? ""),
-          dataRecebimento: String(row.data_recebimento_fmt ?? ""),
-          status: `Recebido por ${row.recebido_por ?? "-"}`,
-          isNew: Boolean(row.is_new ?? false),
-          recebidoPor: row.recebido_por ?? undefined,
-          // novo: vindo do JOIN com a tabela retirada
-          entregue: Boolean(row.nome_retirou),
-          retiradoPor: row.nome_retirou ?? undefined,
-          dataRetirada: row.data_retirada_fmt ?? undefined,
-        }))
+        const list: Encomenda[] = (data?.rows || []).map((row: any) => {
+          return {
+            id: String(row.id_encomenda ?? ""),
+            bloco: String(row.bloco ?? ""),
+            apartamento: String(row.apartamento ?? ""),
+            morador: String(row.nome ?? ""),
+            empresa: String(row.empresa_entrega ?? ""),
+            dataRecebimento: String(row.data_recebimento_fmt ?? ""),
+            status: `Recebido por ${row.recebido_por ?? "-"}`,
+            isNew: Boolean(row.is_new ?? false),
+            recebidoPor: row.recebido_por ?? undefined,
+            entregue: Boolean(row.nome_retirou),
+            retiradoPor: row.nome_retirou ?? undefined,
+            dataRetirada: row.data_retirada_fmt ?? undefined,
+          }
+        })
 
         setEncomendas(list)
         // opcional: sincroniza localStorage para fallback offline
@@ -90,6 +92,18 @@ export default function EncomendasPage() {
     }
 
     loadFromDB()
+  }, [])
+
+  useEffect(() => {
+    const measure = () => {
+      const el = containerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setNavDims({ left: rect.left, width: rect.width })
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
   }, [])
 
   const marcarComoVista = (id: string) => {
@@ -137,10 +151,10 @@ export default function EncomendasPage() {
 
   return (
     <>
-      <div className="container">
+      <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá, {displayName || "usuario"}!
             </span>
@@ -214,7 +228,7 @@ export default function EncomendasPage() {
           )}
         </div>
 
-        <nav className="nav-menu">
+        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
           <Link href="/" className="nav-item">
             <div className="nav-icon">🏠</div>
             Início
@@ -241,6 +255,20 @@ export default function EncomendasPage() {
           )}
         </nav>
       </div>
+
+      <style jsx>{`
+        .nav-menu {
+          position: fixed;
+          bottom: 0;
+          z-index: 1000;
+          background: var(--card, #fff);
+          border-top: 1px solid #e5e7eb;
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+        }
+        .container {
+          padding-bottom: 80px;
+        }
+      `}</style>
     </>
   )
 }

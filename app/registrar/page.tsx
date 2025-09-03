@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
 
@@ -113,14 +113,42 @@ export default function RegistrarPage() {
     setTimeout(() => setShowAlert(false), 5000)
   }
 
+  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const helloRef = useRef<HTMLSpanElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
+
+  useEffect(() => {
+    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+    if (linkEl && helloRef.current) {
+      const cs = window.getComputedStyle(linkEl)
+      helloRef.current.style.color = cs.color
+    }
+  }, [])
+
+  useEffect(() => {
+    const measure = () => {
+      const el = containerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setNavDims({ left: rect.left, width: rect.width })
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
+
   return (
     <>
       <AdminGate />
-      <div className="container">
+      <div className="container" ref={containerRef}>
         <div className="main-content">
-          <Link href="/" className="back-link">
-            ← Voltar ao início
-          </Link>
+
+          {/* Top bar com saudação */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>Olá, Administrador!</span>
+          </div>
 
           <div className="header">
             <h1>Registrar Encomenda</h1>
@@ -245,7 +273,7 @@ export default function RegistrarPage() {
           </div>
         </div>
 
-        <nav className="nav-menu">
+        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
           <Link href="/" className="nav-item">
             <div className="nav-icon">🏠</div>
             Início
@@ -272,6 +300,21 @@ export default function RegistrarPage() {
           )}
         </nav>
       </div>
+
+      <style jsx>{`
+        .nav-menu {
+          position: fixed;
+          bottom: 0;
+          z-index: 1000;
+          background: var(--card, #fff);
+          border-top: 1px solid #e5e7eb;
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+        }
+        /* reserva espaço para o nav fixo */
+        .container {
+          padding-bottom: 80px;
+        }
+      `}</style>
     </>
   )
 }

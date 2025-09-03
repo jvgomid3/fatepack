@@ -50,6 +50,8 @@ export default function HistoricoPage() {
   const [confirmLoadingId, setConfirmLoadingId] = useState<string | null>(null) // novo
   const backLinkRef = useRef<HTMLAnchorElement | null>(null) // novo
   const helloRef = useRef<HTMLSpanElement | null>(null)       // novo
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
@@ -62,6 +64,18 @@ export default function HistoricoPage() {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
     }
+  }, [])
+
+  useEffect(() => {
+    const measure = () => {
+      const el = containerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setNavDims({ left: rect.left, width: rect.width })
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
   }, [])
 
   // carrega do banco sempre que filtros mudarem (e a cada 30s, com os filtros atuais)
@@ -121,10 +135,10 @@ export default function HistoricoPage() {
   return (
     <>
       <AdminGate />
-      <div className="container">
+      <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
             <span ref={helloRef} style={{ fontWeight: 600 }}>
               Olá, Administrador!
             </span>
@@ -362,7 +376,7 @@ export default function HistoricoPage() {
           )}
         </div>
 
-        <nav className="nav-menu">
+        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
           <Link href="/" className="nav-item">
             <div className="nav-icon">🏠</div>
             Início
@@ -387,6 +401,18 @@ export default function HistoricoPage() {
           )}
         </nav>
       </div>
+
+      <style jsx>{`
+        .nav-menu {
+          position: fixed;
+          bottom: 0;
+          z-index: 1000;
+          background: var(--card, #fff);
+          border-top: 1px solid #e5e7eb;
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+        }
+        .container { padding-bottom: 80px; }
+      `}</style>
     </>
   )
 }
