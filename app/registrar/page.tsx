@@ -35,7 +35,8 @@ export default function RegistrarPage() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   // novo estado para o nome de quem recebeu
-  const [recebidoPor, setRecebidoPor] = useState("") // mantém vazio ao carregar
+  const [recebidoPor, setRecebidoPor] = useState("")
+  const [lastRecebidoPor, setLastRecebidoPor] = useState("") // novo
 
   const blocos = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 
@@ -49,46 +50,67 @@ export default function RegistrarPage() {
     setIsAdmin(localStorage.getItem("userType") === "admin")
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!bloco || !apartamento || !morador || !empresa) {
+    if (!bloco || !apartamento || !morador || !empresa || !recebidoPor) {
       alert("Por favor, preencha todos os campos")
       return
     }
 
-    const nomeRecebedor = recebidoPor.trim()
+    const nomeRecebedor = capFirst(recebidoPor.trim())
+    const empresaNorm = capFirst(empresa.trim())
+    const moradorNorm = capFirst(morador.trim())
 
+    let dataFmtFromApi = ""
+    try {
+      const res = await fetch("/api/encomendas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empresa: empresaNorm,
+          bloco,
+          apartamento,
+          nome: moradorNorm,
+          recebidoPor: nomeRecebedor,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao salvar no banco")
+
+      setLastRecebidoPor(String(data?.recebido_por || nomeRecebedor))
+      dataFmtFromApi = String(data?.data_recebimento_fmt || "")
+    } catch (err: any) {
+      console.error("ENCOMENDA API ERROR:", err?.message)
+      alert(err?.message || "Erro ao salvar no banco")
+      return
+    }
+
+    // lista local (mostra a mesma data que o banco retornou)
     const novaEncomenda: Encomenda = {
       id: Date.now().toString(),
       bloco,
       apartamento,
-      morador: capFirst(morador.trim()), // Aplica capitalização
-      empresa: capFirst(empresa.trim()), // mantém capitalização
-      dataRecebimento: new Date().toLocaleString("pt-BR"),
-      status: `Recebido por ${nomeRecebedor}`, // usa o campo digitado
+      morador: moradorNorm,
+      empresa: empresaNorm,
+      dataRecebimento: dataFmtFromApi || new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date()),
+      status: `Recebido por ${nomeRecebedor}`,
       isNew: true,
-      recebidoPor: capFirst(nomeRecebedor), // persiste no objeto e aplica capitalização
+      recebidoPor: nomeRecebedor,
     }
 
-    // Salvar no localStorage para simular persistência
     const encomendas = JSON.parse(localStorage.getItem("encomendas") || "[]")
     encomendas.unshift(novaEncomenda)
     localStorage.setItem("encomendas", JSON.stringify(encomendas))
 
-    // Mostrar confirmação
     setShowAlert(true)
-
-    // Limpar formulário (inclui o campo Recebido por)
     setBloco("")
     setApartamento("")
     setMorador("")
     setEmpresa("")
-    setEmpresaIsOutro(false) // reset do modo "Outros"
-    setRecebidoPor("") // deixa em branco após salvar
-
-    // Esconder alerta após 3 segundos
-    setTimeout(() => setShowAlert(false), 3000)
+    setEmpresaIsOutro(false)
+    setRecebidoPor("")
+    setTimeout(() => setShowAlert(false), 5000)
   }
 
   return (
@@ -109,7 +131,7 @@ export default function RegistrarPage() {
             <div className="alert success">
               ✅ Encomenda registrada com sucesso! O morador será notificado.
               <br />
-              <small>Recebido por {recebidoPor.trim()}</small> {/* mostra o digitado */}
+              <small>Recebido por {lastRecebidoPor}</small>
             </div>
           )}
 

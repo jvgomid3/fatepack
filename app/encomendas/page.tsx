@@ -12,11 +12,12 @@ interface Encomenda {
   empresa: string
   dataRecebimento: string
   status: string
-  isNew: boolean
-  recebidoPor?: string // novo
+  isNew?: boolean
+  recebidoPor?: string
+  // novo: status de retirada
+  entregue?: boolean
   retiradoPor?: string
   dataRetirada?: string
-  entregue?: boolean
 }
 
 export default function EncomendasPage() {
@@ -38,9 +39,6 @@ export default function EncomendasPage() {
     setMyBlock(localStorage.getItem("userBlock"))
     setMyApt(localStorage.getItem("userApartment"))
 
-    const encomendasSalvas = JSON.parse(localStorage.getItem("encomendas") || "[]")
-    setEncomendas(encomendasSalvas)
-
     // nome para saudação
     const name =
       localStorage.getItem("userName") ||
@@ -57,6 +55,41 @@ export default function EncomendasPage() {
       const cs = window.getComputedStyle(linkEl)
       helloEl.style.color = cs.color
     }
+
+    // Carrega do banco (sem cache)
+    const loadFromDB = async () => {
+      try {
+        const res = await fetch(`/api/encomendas?ts=${Date.now()}`, { cache: "no-store" })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
+
+        const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
+          id: String(row.id_encomenda ?? ""),
+          bloco: String(row.bloco ?? ""),
+          apartamento: String(row.apartamento ?? ""),
+          morador: String(row.nome ?? ""),
+          empresa: String(row.empresa_entrega ?? ""),
+          dataRecebimento: String(row.data_recebimento_fmt ?? ""),
+          status: `Recebido por ${row.recebido_por ?? "-"}`,
+          isNew: Boolean(row.is_new ?? false),
+          recebidoPor: row.recebido_por ?? undefined,
+          // novo: vindo do JOIN com a tabela retirada
+          entregue: Boolean(row.nome_retirou),
+          retiradoPor: row.nome_retirou ?? undefined,
+          dataRetirada: row.data_retirada_fmt ?? undefined,
+        }))
+
+        setEncomendas(list)
+        // opcional: sincroniza localStorage para fallback offline
+        localStorage.setItem("encomendas", JSON.stringify(list))
+      } catch (e) {
+        // fallback ao localStorage se a API falhar
+        const cached = JSON.parse(localStorage.getItem("encomendas") || "[]")
+        setEncomendas(cached)
+      }
+    }
+
+    loadFromDB()
   }, [])
 
   const marcarComoVista = (id: string) => {
@@ -262,14 +295,14 @@ function PackageCard({
                 border: "1px solid var(--success)",
               }}
             >
-              <p style={{ color: "var(--success)", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
+              <p style={{ color: "var(--success)", fontWeight: 600, margin: "0 0 0.5rem 0" }}>
                 ✅ Encomenda Retirada
               </p>
               <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                <strong>Retirado em:</strong> {encomenda.dataRetirada}
+                <strong>Retirado por:</strong> {encomenda.retiradoPor}
               </p>
               <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                <strong>Retirado por:</strong> {encomenda.retiradoPor}
+                <strong>Retirado às:</strong> {encomenda.dataRetirada}
               </p>
             </div>
           )}

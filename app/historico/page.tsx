@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react" // <- adicionado useRef
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
 
@@ -12,10 +12,16 @@ interface Encomenda {
   empresa: string
   dataRecebimento: string
   status: string
-  isNew: boolean
+  entregue?: boolean
   retiradoPor?: string
   dataRetirada?: string
-  entregue?: boolean
+}
+
+// Capitaliza a primeira letra não-espaço
+const capFirst = (s: string) => {
+  const i = s.search(/\S/)
+  if (i === -1) return ""
+  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
 export default function HistoricoPage() {
@@ -26,15 +32,52 @@ export default function HistoricoPage() {
   const [showInputId, setShowInputId] = useState<string | null>(null)
   const [nomeRetirada, setNomeRetirada] = useState("")
   const [isAdmin, setIsAdmin] = useState(false)
+  const [confirmLoadingId, setConfirmLoadingId] = useState<string | null>(null) // novo
+  const backLinkRef = useRef<HTMLAnchorElement | null>(null) // novo
+  const helloRef = useRef<HTMLSpanElement | null>(null)       // novo
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
     setUser(userData)
-
-    const encomendasSalvas = JSON.parse(localStorage.getItem("encomendas") || "[]")
-    setEncomendas(encomendasSalvas)
-
     setIsAdmin(localStorage.getItem("userType") === "admin")
+
+    const loadFromDB = async () => {
+      try {
+        const res = await fetch(`/api/encomendas?ts=${Date.now()}`, { cache: "no-store" })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
+
+        const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
+          id: String(row.id_encomenda ?? ""),
+          bloco: String(row.bloco ?? ""),
+          apartamento: String(row.apartamento ?? ""),
+          morador: String(row.nome ?? ""),
+          empresa: String(row.empresa_entrega ?? ""),
+          dataRecebimento: String(row.data_recebimento_fmt ?? ""),
+          status: `Recebido por ${row.recebido_por ?? "-"}`,
+          entregue: Boolean(row.nome_retirou),
+          retiradoPor: row.nome_retirou ?? undefined,
+          dataRetirada: row.data_retirada_fmt ?? undefined,
+        }))
+
+        setEncomendas(list)
+        localStorage.setItem("historico_encomendas", JSON.stringify(list))
+      } catch {
+        const cached = JSON.parse(localStorage.getItem("historico_encomendas") || "[]")
+        setEncomendas(cached)
+      }
+    }
+
+    // aplica a mesma cor do link "Voltar ao início" na saudação
+    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+    if (linkEl && helloRef.current) {
+      const cs = window.getComputedStyle(linkEl)
+      helloRef.current.style.color = cs.color
+    }
+
+    loadFromDB()
+    const id = setInterval(loadFromDB, 30000)
+    return () => clearInterval(id)
   }, [])
 
   const empresasUnicas = [...new Set(encomendas.map((enc) => enc.empresa))].sort()
@@ -71,18 +114,8 @@ export default function HistoricoPage() {
   const formatarMes = (mesAno: string) => {
     const [ano, mes] = mesAno.split("-")
     const meses = [
-      "Janeiro",
-      "Fevereiro",
-      "Março",
-      "Abril",
-      "Maio",
-      "Junho",
-      "Julho",
-      "Agosto",
-      "Setembro",
-      "Outubro",
-      "Novembro",
-      "Dezembro",
+      "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
     ]
     return `${meses[Number.parseInt(mes) - 1]} ${ano}`
   }
@@ -92,9 +125,12 @@ export default function HistoricoPage() {
       <AdminGate />
       <div className="container">
         <div className="main-content">
-          <Link href="/" className="back-link">
-            ← Voltar ao início
-          </Link>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <span ref={helloRef} style={{ fontWeight: 600 }}>
+              Olá, Administrador!
+            </span>
+          </div>
 
           <div className="header">
             <h1>Histórico de Encomendas</h1>
@@ -199,40 +235,61 @@ export default function HistoricoPage() {
                           className="form-input"
                           placeholder="Nome de quem retirou"
                           value={nomeRetirada}
-                          onChange={(e) => setNomeRetirada(e.target.value)}
+                          onChange={(e) => setNomeRetirada(capFirst(e.target.value))}
                           style={{ marginRight: 8 }}
                         />
                         <button
                           className="btn btn-primary"
                           style={{ padding: "0.5rem 1rem" }}
-                          onClick={() => {
-                            // Atualiza a encomenda como entregue
-                            const novas = encomendas.map((e) =>
-                              e.id === encomenda.id
-                                ? {
-                                    ...e,
-                                    entregue: true,
-                                    retiradoPor: nomeRetirada,
-                                    dataRetirada: new Date().toLocaleString("pt-BR"),
-                                  }
-                                : e
-                            );
-                            setEncomendas(novas);
-                            localStorage.setItem("encomendas", JSON.stringify(novas));
-                            setShowInputId(null);
-                            setNomeRetirada("");
+                          onClick={async () => {
+                            const nome = capFirst(nomeRetirada.trim())
+                            if (!nome) return
+                            try {
+                              setConfirmLoadingId(encomenda.id)
+                              const res = await fetch("/api/retiradas", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  id_encomenda: Number(encomenda.id),
+                                  nome_retirou: nome,
+                                }),
+                              })
+                              const data = await res.json().catch(() => null)
+                              if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao confirmar retirada")
+
+                              const novas = encomendas.map((e) =>
+                                e.id === encomenda.id
+                                  ? {
+                                      ...e,
+                                      entregue: true,
+                                      retiradoPor: String(data?.nome_retirou || nome),
+                                      dataRetirada: String(data?.data_retirada_fmt || ""),
+                                    }
+                                  : e
+                              )
+                              setEncomendas(novas)
+                              localStorage.setItem("historico_encomendas", JSON.stringify(novas))
+                              setShowInputId(null)
+                              setNomeRetirada("")
+                            } catch (err: any) {
+                              alert(err?.message || "Falha ao confirmar retirada")
+                            } finally {
+                              setConfirmLoadingId(null)
+                            }
                           }}
-                          disabled={!nomeRetirada.trim()}
+                          disabled={!nomeRetirada.trim() || confirmLoadingId === encomenda.id}
                         >
-                          Confirmar
+                          {confirmLoadingId === encomenda.id ? "Confirmando..." : "Confirmar"}
                         </button>
                         <button
                           className="btn btn-outline"
                           style={{ padding: "0.5rem 1rem", marginLeft: 8 }}
                           onClick={() => {
-                            setShowInputId(null);
-                            setNomeRetirada("");
+                            if (confirmLoadingId) return
+                            setShowInputId(null)
+                            setNomeRetirada("")
                           }}
+                          disabled={confirmLoadingId === encomenda.id}
                         >
                           Cancelar
                         </button>

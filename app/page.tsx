@@ -304,7 +304,7 @@ export default function HomePage() {
                   borderRadius: "8px",
                   border: "1px solid #e2e8f0",
                   fontSize: "16px",
-                  width: "86%", // garante largura total
+                  width: "85%", // garante largura total
                   boxSizing: "border-box", // garante que padding não ultrapasse o card
 
                 }}
@@ -365,7 +365,7 @@ export default function HomePage() {
                   borderRadius: "8px",
                   border: "1px solid #e2e8f0",
                   fontSize: "16px",
-                  width: "85%", // garante largura total
+                  width: "84.5%", // garante largura total
                   boxSizing: "border-box", // garante que padding não ultrapasse o card
                 }}
               >
