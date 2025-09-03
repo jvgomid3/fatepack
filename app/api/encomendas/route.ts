@@ -26,38 +26,68 @@ const capFirst = (s: string) => {
   return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
-export const dynamic = "force-dynamic" // evita cache em rotas
+export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const empresa = searchParams.get("empresa") || ""
+  const mes = searchParams.get("mes") || ""              // formato YYYY-MM
+  const bloco = searchParams.get("bloco") || ""
+  const apartamento = searchParams.get("apartamento") || ""
+
   const client = await getPool().connect()
   try {
     await client.query(`SET TIME ZONE 'America/Sao_Paulo'`)
-    const r = await client.query(
-      `SELECT 
-         e.id_encomenda,
-         e.empresa_entrega,
-         e.data_recebimento,
-         to_char(e.data_recebimento, 'DD/MM/YYYY HH24:MI') AS data_recebimento_fmt,
-         e.id_apartamento,
-         e.bloco,
-         e.apartamento,
-         e.nome,
-         e.recebido_por,
-         r.nome_retirou,
-         r.data_retirada,
-         to_char(r.data_retirada, 'DD/MM/YYYY HH24:MI') AS data_retirada_fmt,
-         (now()::timestamp - e.data_recebimento <= interval '24 hours') AS is_new
-       FROM encomenda e
-       LEFT JOIN LATERAL (
-         SELECT nome_retirou, data_retirada
-           FROM retirada
-          WHERE id_encomenda = e.id_encomenda
-          ORDER BY data_retirada DESC, id_retirada DESC
-          LIMIT 1
-       ) r ON true
-       ORDER BY e.data_recebimento DESC`
+
+    const where: string[] = []
+    const params: any[] = []
+    let i = 1
+    if (empresa)      { where.push(`e.empresa_entrega = $${i++}`); params.push(empresa) }
+    if (bloco)        { where.push(`e.bloco = $${i++}`);           params.push(bloco) }
+    if (apartamento)  { where.push(`e.apartamento = $${i++}`);     params.push(apartamento) }
+    if (mes) {
+      where.push(`date_trunc('month', e.data_recebimento) = to_date($${i++}, 'YYYY-MM')`)
+      params.push(mes)
+    }
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : ""
+
+    const sql = `
+      SELECT 
+        e.id_encomenda,
+        e.empresa_entrega,
+        e.data_recebimento,
+        to_char(e.data_recebimento, 'DD/MM/YYYY HH24:MI') AS data_recebimento_fmt,
+        e.id_apartamento,
+        e.bloco,
+        e.apartamento,
+        e.nome,
+        e.recebido_por,
+        r.nome_retirou,
+        r.data_retirada,
+        to_char(r.data_retirada, 'DD/MM/YYYY HH24:MI') AS data_retirada_fmt,
+        (now()::timestamp - e.data_recebimento <= interval '24 hours') AS is_new
+      FROM encomenda e
+      LEFT JOIN LATERAL (
+        SELECT nome_retirou, data_retirada
+          FROM retirada
+         WHERE id_encomenda = e.id_encomenda
+         ORDER BY data_retirada DESC, id_retirada DESC
+         LIMIT 1
+      ) r ON true
+      ${whereSql}
+      ORDER BY e.data_recebimento DESC
+    `
+    const r = await client.query(sql, params)
+
+    // meses disponíveis (sempre do conjunto total)
+    const m = await client.query(
+      `SELECT to_char(date_trunc('month', data_recebimento), 'YYYY-MM') AS ym
+         FROM encomenda
+        GROUP BY 1
+        ORDER BY 1 DESC`
     )
-    return NextResponse.json({ ok: true, rows: r.rows }, { status: 200 })
+
+    return NextResponse.json({ ok: true, rows: r.rows, months: m.rows.map((x) => x.ym) }, { status: 200 })
   } finally {
     client.release()
   }

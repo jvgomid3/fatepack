@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react" // <- adicionado useRef
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
 
@@ -24,10 +24,25 @@ const capFirst = (s: string) => {
   return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
+// >>> novo: formata "YYYY-MM" para "Mês Ano"
+const formatarMes = (ym: string) => {
+  const [ano, mes] = ym.split("-")
+  const nomes = [
+    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  ]
+  const idx = Number(mes)
+  if (!ano || !idx || idx < 1 || idx > 12) return ym
+  return `${nomes[idx - 1]} ${ano}`
+}
+
 export default function HistoricoPage() {
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
   const [filtroMes, setFiltroMes] = useState("")
+  const [filtroBloco, setFiltroBloco] = useState("")
+  const [filtroApto, setFiltroApto] = useState("")
+  const [mesesDisponiveis, setMesesDisponiveis] = useState<string[]>([])
   const [user, setUser] = useState<any>(null)
   const [showInputId, setShowInputId] = useState<string | null>(null)
   const [nomeRetirada, setNomeRetirada] = useState("")
@@ -41,83 +56,66 @@ export default function HistoricoPage() {
     setUser(userData)
     setIsAdmin(localStorage.getItem("userType") === "admin")
 
-    const loadFromDB = async () => {
-      try {
-        const res = await fetch(`/api/encomendas?ts=${Date.now()}`, { cache: "no-store" })
-        const data = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
-
-        const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
-          id: String(row.id_encomenda ?? ""),
-          bloco: String(row.bloco ?? ""),
-          apartamento: String(row.apartamento ?? ""),
-          morador: String(row.nome ?? ""),
-          empresa: String(row.empresa_entrega ?? ""),
-          dataRecebimento: String(row.data_recebimento_fmt ?? ""),
-          status: `Recebido por ${row.recebido_por ?? "-"}`,
-          entregue: Boolean(row.nome_retirou),
-          retiradoPor: row.nome_retirou ?? undefined,
-          dataRetirada: row.data_retirada_fmt ?? undefined,
-        }))
-
-        setEncomendas(list)
-        localStorage.setItem("historico_encomendas", JSON.stringify(list))
-      } catch {
-        const cached = JSON.parse(localStorage.getItem("historico_encomendas") || "[]")
-        setEncomendas(cached)
-      }
-    }
-
-    // aplica a mesma cor do link "Voltar ao início" na saudação
+    // cor da saudação
     const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
     if (linkEl && helloRef.current) {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
     }
-
-    loadFromDB()
-    const id = setInterval(loadFromDB, 30000)
-    return () => clearInterval(id)
   }, [])
 
-  const empresasUnicas = [...new Set(encomendas.map((enc) => enc.empresa))].sort()
+  // carrega do banco sempre que filtros mudarem (e a cada 30s, com os filtros atuais)
+  useEffect(() => {
+    const load = async () => {
+      const params = new URLSearchParams()
+      if (filtroEmpresa) params.set("empresa", filtroEmpresa)
+      if (filtroMes)     params.set("mes", filtroMes)
+      if (filtroBloco)   params.set("bloco", filtroBloco)
+      if (filtroApto)    params.set("apartamento", filtroApto)
 
-  const mesesUnicos = [
-    ...new Set(
-      encomendas.map((enc) => {
-        const data = new Date(enc.dataRecebimento.split(", ")[0].split("/").reverse().join("-"))
-        return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`
-      }),
-    ),
-  ]
-    .sort()
-    .reverse()
+      const res = await fetch(`/api/encomendas?${params.toString()}&ts=${Date.now()}`, { cache: "no-store" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
 
-  const encomendasFiltradas = encomendas.filter((enc) => {
-    const passaEmpresa = !filtroEmpresa || enc.empresa === filtroEmpresa
+      const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
+        id: String(row.id_encomenda ?? ""),
+        bloco: String(row.bloco ?? ""),
+        apartamento: String(row.apartamento ?? ""),
+        morador: String(row.nome ?? ""),
+        empresa: String(row.empresa_entrega ?? ""),
+        dataRecebimento: String(row.data_recebimento_fmt ?? ""),
+        status: `Recebido por ${row.recebido_por ?? "-"}`,
+        entregue: Boolean(row.nome_retirou),
+        retiradoPor: row.nome_retirou ?? undefined,
+        dataRetirada: row.data_retirada_fmt ?? undefined,
+      }))
 
-    let passaMes = true
-    if (filtroMes) {
-      const dataEnc = new Date(enc.dataRecebimento.split(", ")[0].split("/").reverse().join("-"))
-      const mesEnc = `${dataEnc.getFullYear()}-${String(dataEnc.getMonth() + 1).padStart(2, "0")}`
-      passaMes = mesEnc === filtroMes
+      setEncomendas(list)
+      if (Array.isArray(data?.months)) setMesesDisponiveis(data.months)
     }
 
-    return passaEmpresa && passaMes
-  })
+    load().catch((e) => {
+      console.error(e)
+      setEncomendas([])
+    })
+
+    const id = setInterval(() => load().catch(() => {}), 30000)
+    return () => clearInterval(id)
+  }, [filtroEmpresa, filtroMes, filtroBloco, filtroApto])
+
+  // opções (derivadas do resultado atual, incluindo dependência Bloco -> Apt)
+  const empresasUnicas = [...new Set(encomendas.map((e) => e.empresa))].sort()
+  const blocosUnicos = [...new Set(encomendas.map((e) => e.bloco))].sort()
+  const aptosBase = filtroBloco ? encomendas.filter((e) => e.bloco === filtroBloco) : encomendas
+  const aptosUnicos = [...new Set(aptosBase.map((e) => e.apartamento))].sort((a, b) =>
+    String(a).localeCompare(String(b), "pt-BR", { numeric: true })
+  )
 
   const limparFiltros = () => {
     setFiltroEmpresa("")
     setFiltroMes("")
-  }
-
-  const formatarMes = (mesAno: string) => {
-    const [ano, mes] = mesAno.split("-")
-    const meses = [
-      "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
-    ]
-    return `${meses[Number.parseInt(mes) - 1]} ${ano}`
+    setFiltroBloco("")
+    setFiltroApto("")
   }
 
   return (
@@ -137,48 +135,86 @@ export default function HistoricoPage() {
             <p>Visualize todas as encomendas registradas</p>
           </div>
 
-          <div className="card">
-            <h3 style={{ marginBottom: "1rem", color: "var(--foreground)" }}>Filtros</h3>
-
-            <div className="form-grid">
+          {/* Filtros */}
+          <div className="card" style={{ marginBottom: "1rem" }}>
+            <div className="form-grid" style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
+              {/* Bloco */}
               <div className="form-group">
-                <label className="form-label">Empresa</label>
-                <select className="form-select" value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)}>
-                  <option value="">Todas as empresas</option>
-                  {empresasUnicas.map((empresa) => (
-                    <option key={empresa} value={empresa}>
-                      {empresa}
-                    </option>
+                <label className="form-label">Bloco</label>
+                <select
+                  className="form-select"
+                  value={filtroBloco}
+                  onChange={(e) => {
+                    setFiltroBloco(e.target.value)
+                    setFiltroApto("") // reset apto ao trocar bloco
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {blocosUnicos.map((b) => (
+                    <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
               </div>
 
+              {/* Apartamento */}
+              <div className="form-group">
+                <label className="form-label">Apartamento</label>
+                <select
+                  className="form-select"
+                  value={filtroApto}
+                  onChange={(e) => setFiltroApto(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {aptosUnicos.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Empresa (já existia) */}
+              <div className="form-group">
+                <label className="form-label">Empresa</label>
+                <select
+                  className="form-select"
+                  value={filtroEmpresa}
+                  onChange={(e) => setFiltroEmpresa(e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {empresasUnicas.map((emp) => (
+                    <option key={emp} value={emp}>{emp}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mês */}
               <div className="form-group">
                 <label className="form-label">Mês</label>
-                <select className="form-select" value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
-                  <option value="">Todos os meses</option>
-                  {mesesUnicos.map((mes) => (
-                    <option key={mes} value={mes}>
-                      {formatarMes(mes)}
-                    </option>
+                <select
+                  className="form-select"
+                  value={filtroMes}
+                  onChange={(e) => setFiltroMes(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {mesesDisponiveis.map((m) => (
+                    <option key={m} value={m}>{formatarMes(m)}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {(filtroEmpresa || filtroMes) && (
-              <button onClick={limparFiltros} className="btn btn-outline">
-                🗑️ Limpar Filtros
-              </button>
-            )}
+            <div style={{ marginTop: "0.5rem" }}>
+              <button className="btn btn-outline" onClick={limparFiltros}>Limpar filtros</button>
+            </div>
           </div>
 
+          {/* Contagem com base no resultado do banco */}
           <div style={{ marginBottom: "1rem", color: "var(--muted-foreground)", textAlign: "center" }}>
-            <strong>{encomendasFiltradas.length}</strong> encomenda(s) encontrada(s)
+            <strong>{encomendas.length}</strong> encomenda(s) encontrada(s)
           </div>
 
-          {encomendasFiltradas.length > 0 ? (
-            encomendasFiltradas.map((encomenda) => (
+          {/* Lista usa diretamente encomendas (sem encomendasFiltradas) */}
+          {encomendas.length > 0 ? (
+            encomendas.map((encomenda) => (
               <div key={encomenda.id} className={`package-card ${encomenda.entregue ? "success" : ""}`}>
                 <h3>{encomenda.morador}</h3>
                 <p>
@@ -318,7 +354,7 @@ export default function HistoricoPage() {
             <div className="empty-state">
               <h3>📊 Nenhuma encomenda encontrada</h3>
               <p>
-                {filtroEmpresa || filtroMes
+                {filtroEmpresa || filtroMes || filtroBloco || filtroApto
                   ? "Tente ajustar os filtros para encontrar encomendas"
                   : "Não há encomendas registradas no histórico"}
               </p>
