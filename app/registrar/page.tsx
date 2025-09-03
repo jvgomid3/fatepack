@@ -110,7 +110,7 @@ export default function RegistrarPage() {
     setEmpresa("")
     setEmpresaIsOutro(false)
     setRecebidoPor("")
-    setTimeout(() => setShowAlert(false), 5000)
+    setTimeout(() => setShowAlert(false), 3500)
   }
 
   const backLinkRef = useRef<HTMLAnchorElement | null>(null)
@@ -146,7 +146,7 @@ export default function RegistrarPage() {
 
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Voltar ao início</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>Olá, Administrador!</span>
           </div>
 
@@ -275,8 +275,8 @@ export default function RegistrarPage() {
 
         <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
           <Link href="/" className="nav-item">
-            <div className="nav-icon">🏠</div>
-            Início
+            <div className="nav-icon">➜]</div>
+            Sair
           </Link>
 
           {isAdmin ? (

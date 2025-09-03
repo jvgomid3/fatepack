@@ -378,8 +378,8 @@ export default function HistoricoPage() {
 
         <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
           <Link href="/" className="nav-item">
-            <div className="nav-icon">🏠</div>
-            Início
+            <div className="nav-icon">➜]</div>
+            Sair
           </Link>
 
           {isAdmin ? (
