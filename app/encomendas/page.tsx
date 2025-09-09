@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 
@@ -20,6 +21,7 @@ interface Encomenda {
 }
 
 export default function EncomendasPage() {
+  const router = useRouter()
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [apartamentoFiltro, setApartamentoFiltro] = useState("")
   const [user, setUser] = useState<any>(null)
@@ -149,6 +151,19 @@ export default function EncomendasPage() {
     return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
   }
 
+  const logout = () => {
+    try {
+      localStorage.removeItem("userType")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userBlock")
+      localStorage.removeItem("userApartment")
+      localStorage.removeItem("currentUser")
+      localStorage.removeItem("user")
+    } catch {}
+    router.replace("/")
+    setTimeout(() => window.location.replace("/"), 100)
+  }
+
   return (
     <>
       <div className="container" ref={containerRef}>
@@ -228,11 +243,25 @@ export default function EncomendasPage() {
           )}
         </div>
 
-        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
-          <Link href="/" className="nav-item">
-            <div className="nav-icon">➜]</div>
+        <nav
+          className="nav-menu"
+          style={{
+            left: "50%",
+            transform: "translateX(-50%)", // centraliza horizontalmente
+            width: navDims.width,           // mantém mesma largura do container
+          }}
+        >
+          <button
+            type="button"
+            className="nav-item"
+            onClick={logout}
+            aria-label="Sair"
+            title="Sair"
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            <div className="nav-icon" aria-hidden="true">↩️</div>
             Sair
-          </Link>
+          </button>
 
           {isAdmin ? (
             <>

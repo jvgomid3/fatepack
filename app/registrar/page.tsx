@@ -4,6 +4,7 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
+import { useRouter } from "next/navigation"
 
 interface Encomenda {
   id: string
@@ -25,6 +26,20 @@ const capFirst = (s: string) => {
 }
 
 export default function RegistrarPage() {
+  const router = useRouter()
+  const logout = () => {
+    try {
+      localStorage.removeItem("userType")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userBlock")
+      localStorage.removeItem("userApartment")
+      localStorage.removeItem("currentUser")
+      localStorage.removeItem("user")
+    } catch {}
+    router.replace("/")
+    setTimeout(() => window.location.replace("/"), 100)
+  }
+
   const [bloco, setBloco] = useState("")
   const [apartamento, setApartamento] = useState("")
   const [morador, setMorador] = useState("")
@@ -274,10 +289,17 @@ export default function RegistrarPage() {
         </div>
 
         <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
-          <Link href="/" className="nav-item">
-            <div className="nav-icon">➜]</div>
+          <button
+            type="button"
+            className="nav-item"
+            onClick={logout}
+            aria-label="Sair"
+            title="Sair"
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            <div className="nav-icon" aria-hidden="true">↩️</div>
             Sair
-          </Link>
+          </button>
 
           {isAdmin ? (
             <>

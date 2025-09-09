@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 // Capitaliza a primeira letra (ignora espaços iniciais)
 const capFirst = (s: string) => {
@@ -229,10 +230,27 @@ export default function HomePage() {
                   fontSize: "16px",
                   width: "100%", // garante largura total
                   boxSizing: "border-box", // garante que padding não ultrapasse o card
-
                 }}
               />
             </div>
+
+            {/* Esqueci minha senha - somente no formulário de Login */}
+            <Link
+              href="/recuperar-senha"
+              className="forgot-password"
+              style={{
+                marginTop: "8px",
+                color: "#0ea5e9",
+                cursor: "pointer",
+                textAlign: "center",
+                fontSize: "14px",
+                width: "100%",
+                display: "block",
+                textDecoration: "none",
+              }}
+            >
+              Esqueci minha senha
+            </Link>
 
             {error && (
               <div

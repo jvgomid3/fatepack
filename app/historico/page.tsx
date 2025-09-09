@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import AdminGate from "../components/AdminGate"
 
@@ -37,6 +38,20 @@ const formatarMes = (ym: string) => {
 }
 
 export default function HistoricoPage() {
+  const router = useRouter()
+  const logout = () => {
+    try {
+      localStorage.removeItem("userType")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userBlock")
+      localStorage.removeItem("userApartment")
+      localStorage.removeItem("currentUser")
+      localStorage.removeItem("user")
+    } catch {}
+    router.replace("/")
+    setTimeout(() => window.location.replace("/"), 100)
+  }
+
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
   const [filtroMes, setFiltroMes] = useState("")
@@ -377,10 +392,17 @@ export default function HistoricoPage() {
         </div>
 
         <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
-          <Link href="/" className="nav-item">
-            <div className="nav-icon">➜]</div>
+          <button
+            type="button"
+            className="nav-item"
+            onClick={logout}
+            aria-label="Sair"
+            title="Sair"
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            <div className="nav-icon" aria-hidden="true">↩️</div>
             Sair
-          </Link>
+          </button>
 
           {isAdmin ? (
             <>
@@ -405,13 +427,18 @@ export default function HistoricoPage() {
       <style jsx>{`
         .nav-menu {
           position: fixed;
-          bottom: 0;
+          bottom: 0;               /* chumbada ao fim da viewport */
           z-index: 1000;
           background: var(--card, #fff);
           border-top: 1px solid #e5e7eb;
-          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+          padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 6px);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          box-sizing: border-box;
         }
-        .container { padding-bottom: 80px; }
+        /* reserva espaço para o nav fixo (igual ao /registrar) */
+        .container { padding-bottom: 96px; }
       `}</style>
     </>
   )
