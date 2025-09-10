@@ -1,41 +1,46 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function InicioPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const [userName, setUserName] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [navDims, setNavDims] = useState({ left: 0, width: 0 })
+
+  // logout copiado da /encomendas: limpa storage e faz replace + redirect
+  const logout = () => {
+    try {
+      localStorage.removeItem("userType")
+      localStorage.removeItem("userName")
+      localStorage.removeItem("userBlock")
+      localStorage.removeItem("userApartment")
+      localStorage.removeItem("currentUser")
+      localStorage.removeItem("user")
+    } catch {}
+    router.replace("/")
+    setTimeout(() => window.location.replace("/"), 100)
+  }
 
   // prioriza ?nome na URL; se não existir, usa localStorage (fluxo de login)
-  const [userName, setUserName] = useState<string | null>(() => {
+  useEffect(() => {
     try {
       if (typeof window !== "undefined") {
         const q = new URLSearchParams(window.location.search).get("nome")
-        if (q) return q
-        return localStorage.getItem("userName") || null
+        if (q) {
+          setUserName(q)
+          localStorage.setItem("userName", q)
+        } else {
+          const s = localStorage.getItem("userName")
+          if (s) setUserName(s)
+        }
       }
     } catch {
       /* ignore */
     }
-    return null
-  })
-
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const [navDims, setNavDims] = useState({ left: 0, width: 0 })
-
-  useEffect(() => {
-    const q = searchParams?.get("nome")
-    if (q) {
-      setUserName(q)
-      try { localStorage.setItem("userName", q) } catch {}
-      return
-    }
-    // fallback: se veio do login, pega do localStorage
-    try {
-      const s = localStorage.getItem("userName")
-      if (s) setUserName(s)
-    } catch {}
   }, [searchParams])
 
   // medição do container para nav (mantém comportamento antigo)
@@ -98,14 +103,7 @@ export default function InicioPage() {
             <button
               type="button"
               className="nav-item"
-              onClick={async () => {
-                try {
-                  await fetch(window.location.origin + "/api/logout", { method: "POST", credentials: "include" })
-                } catch (e) {
-                  /* ignore */
-                }
-                router.push("/")
-              }}
+              onClick={logout}
               title="Sair"
             >
               <div className="nav-icon" aria-hidden="true">↩️</div>
