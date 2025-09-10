@@ -48,6 +48,8 @@ export default function RegistrarPage() {
   const [showAlert, setShowAlert] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // nome a mostrar na saudação (prefere currentUser, depois localStorage)
+  const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
 
   const [lastRecebidoPor, setLastRecebidoPor] = useState("") // novo
 
@@ -165,7 +167,9 @@ export default function RegistrarPage() {
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
-            <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>Olá, Administrador!</span>
+            <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
+              Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
+            </span>
           </div>
 
           <div className="header">

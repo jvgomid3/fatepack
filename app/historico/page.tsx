@@ -61,7 +61,9 @@ export default function HistoricoPage() {
   const [user, setUser] = useState<any>(null)
   const [showInputId, setShowInputId] = useState<string | null>(null)
   const [nomeRetirada, setNomeRetirada] = useState("")
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
   const [confirmLoadingId, setConfirmLoadingId] = useState<string | null>(null) // novo
   const backLinkRef = useRef<HTMLAnchorElement | null>(null) // novo
   const helloRef = useRef<HTMLSpanElement | null>(null)       // novo
@@ -154,8 +156,8 @@ export default function HistoricoPage() {
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
-            <span ref={helloRef} style={{ fontWeight: 600 }}>
-              Olá, Administrador!
+            <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
+              Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>
           </div>
 
