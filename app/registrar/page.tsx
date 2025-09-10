@@ -49,8 +49,6 @@ export default function RegistrarPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
-  // novo estado para o nome de quem recebeu
-  const [recebidoPor, setRecebidoPor] = useState("")
   const [lastRecebidoPor, setLastRecebidoPor] = useState("") // novo
 
   const blocos = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
@@ -68,12 +66,18 @@ export default function RegistrarPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!bloco || !apartamento || !morador || !empresa || !recebidoPor) {
+    // exige usuário logado para usar como "recebido por"
+    const nomeRecebedor = (currentUser && (currentUser.name || currentUser.nome)) || localStorage.getItem("userName") || ""
+    if (!nomeRecebedor) {
+      alert("Usuário não autenticado. Faça login para registrar uma encomenda.")
+      return
+    }
+    if (!bloco || !apartamento || !morador || !empresa) {
       alert("Por favor, preencha todos os campos")
       return
     }
 
-    const nomeRecebedor = capFirst(recebidoPor.trim())
+    const nomeRecebedorNorm = capFirst(String(nomeRecebedor).trim())
     const empresaNorm = capFirst(empresa.trim())
     const moradorNorm = capFirst(morador.trim())
 
@@ -87,13 +91,13 @@ export default function RegistrarPage() {
           bloco,
           apartamento,
           nome: moradorNorm,
-          recebidoPor: nomeRecebedor,
+          recebidoPor: nomeRecebedorNorm,
         }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao salvar no banco")
 
-      setLastRecebidoPor(String(data?.recebido_por || nomeRecebedor))
+      setLastRecebidoPor(String(data?.recebido_por || nomeRecebedorNorm))
       dataFmtFromApi = String(data?.data_recebimento_fmt || "")
     } catch (err: any) {
       console.error("ENCOMENDA API ERROR:", err?.message)
@@ -109,9 +113,9 @@ export default function RegistrarPage() {
       morador: moradorNorm,
       empresa: empresaNorm,
       dataRecebimento: dataFmtFromApi || new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date()),
-      status: `Recebido por ${nomeRecebedor}`,
+      status: `Recebido por ${nomeRecebedorNorm}`,
       isNew: true,
-      recebidoPor: nomeRecebedor,
+      recebidoPor: nomeRecebedorNorm,
     }
 
     const encomendas = JSON.parse(localStorage.getItem("encomendas") || "[]")
@@ -124,7 +128,6 @@ export default function RegistrarPage() {
     setMorador("")
     setEmpresa("")
     setEmpresaIsOutro(false)
-    setRecebidoPor("")
     setTimeout(() => setShowAlert(false), 3500)
   }
 
@@ -266,18 +269,7 @@ export default function RegistrarPage() {
                 </div>
               )}
 
-              {/* Campo novo: Recebido por */}
-              <div className="form-group">
-                <label className="form-label">Recebido por</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={recebidoPor}
-                  onChange={(e) => setRecebidoPor(capFirst(e.target.value))} // <- aplica capitalização
-                  placeholder="Nome de quem recebeu a encomenda"
-                  required
-                />
-              </div>
+              {/* Recebido por é determinado automaticamente pelo usuário logado */}
 
               <div style={{ display: "flex", justifyContent: "center", marginTop: "0.75rem" }}>
                 <button type="submit" className="btn btn-primary">
@@ -325,16 +317,16 @@ export default function RegistrarPage() {
 
       <style jsx>{`
         .nav-menu {
-          position: fixed;
-          bottom: 0;
-          z-index: 1000;
-          background: var(--card, #fff);
-          border-top: 1px solid #e5e7eb;
-          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+          position: fixed;ixed;
+          bottom: 0;m: 0;
+          z-index: 1000;index: 1000;
+          background: var(--card, #fff);ground: var(--card, #fff);
+          border-top: 1px solid #e5e7eb;rder-top: 1px solid #e5e7eb;
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px));          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
         }
-        /* reserva espaço para o nav fixo */
+        /* reserva espaço para o nav fixo */espaço para o nav fixo */
         .container {
-          padding-bottom: 80px;
+          padding-bottom: 80px;ttom: 80px;
         }
       `}</style>
     </>

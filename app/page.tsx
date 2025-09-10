@@ -46,16 +46,8 @@ export default function HomePage() {
     setError?.("")
 
     const emailTrim = formData.email.trim().toLowerCase()
-    if (emailTrim === "admin" && formData.password === "admin@admin") {
-      localStorage.setItem("userType", "admin")
-      localStorage.setItem("userName", "Administrador")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      router.push("/registrar")
-      return
-    }
-
-    // 2) Fluxo atual (moradores via BD)
+    // removido: autenticação hardcoded do "admin"
+    // a validação de admin vem do backend (campo `tipo`)
     try {
       const res = await fetch("/api/login", {
         method: "POST",
@@ -66,12 +58,19 @@ export default function HomePage() {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || "Falha no login")
 
-      localStorage.setItem("userType", data.tipo || "morador")
-      localStorage.setItem("userName", data.name || data.email.split("@")[0])
-      if (data.block) localStorage.setItem("userBlock", String(data.block))
-      if (data.apartment) localStorage.setItem("userApartment", String(data.apartment))
+      // grava dados retornados pelo backend (backend deve retornar `tipo`)
+      const tipo = data?.tipo || "morador"
+      localStorage.setItem("userType", String(tipo))
+      localStorage.setItem("userName", data?.name || data?.email?.split?.("@")?.[0] || "")
+      if (data?.block) localStorage.setItem("userBlock", String(data.block))
+      if (data?.apartment) localStorage.setItem("userApartment", String(data.apartment))
 
-      router.push("/inicio")
+      // redireciona conforme role: admins -> /registrar, demais -> /inicio
+      if (tipo === "admin") {
+        router.push("/registrar")
+      } else {
+        router.push("/inicio")
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao autenticar")
     }
