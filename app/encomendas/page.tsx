@@ -171,7 +171,7 @@ export default function EncomendasPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
-              Olá, {displayName || "usuario"}!
+              Olá{displayName ? `, ${String(displayName).split(" ")[0]}` : " usuario"}!
             </span>
           </div>
 
