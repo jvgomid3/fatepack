@@ -276,9 +276,9 @@ export default function EncomendasPage() {
             </>
           ) : (
             <>
-              <Link href="/encomendas" className="nav-item active">
-                <div className="nav-icon">📋</div>
-                Encomendas
+              <Link href="/inicio" className="nav-item active">
+                <div className="nav-icon">🏠</div>
+                Início
               </Link>
             </>
           )}
