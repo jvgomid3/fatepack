@@ -111,26 +111,38 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include", // garante cookie de sessão vindo do servidor
-      })
-      const p1 = await r1.json().catch(() => null)
-      if (!r1.ok) throw new Error(p1?.error || "Erro ao cadastrar")
-
-      const r2 = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
         credentials: "include",
       })
-      const p2 = await r2.json().catch(() => null)
-      if (!r2.ok) throw new Error(p2?.error || "Falha ao autenticar")
 
-      localStorage.setItem("userType", p2.tipo || "morador")
-      localStorage.setItem("userName", p2.name || formData.email.split("@")[0])
-      if (p2.block) localStorage.setItem("userBlock", String(p2.block))
-      if (p2.apartment) localStorage.setItem("userApartment", String(p2.apartment))
+      if (!r1.ok) {
+        const p1 = await r1.json().catch(() => null)
+        throw new Error(p1?.error || "Erro ao cadastrar")
+      }
 
-      router.push("/inicio")
+      // lê o nome retornado pelo register; se não vier, usa o nome do form como fallback
+      const created = await r1.json().catch(() => null)
+      let displayName = created?.nome || created?.name || ""
+      if (!displayName && formData.name) {
+        displayName = capFirst(formData.name.trim())
+      }
+
+      // remove possíveis dados de sessão antigos e grava os dados do novo usuário
+      try {
+        localStorage.removeItem("userType")
+        localStorage.removeItem("userName")
+        localStorage.removeItem("userBlock")
+        localStorage.removeItem("userApartment")
+        const userType = created?.tipo || "morador"
+        localStorage.setItem("userType", String(userType))
+        localStorage.setItem("userName", String(displayName))
+        localStorage.setItem("userBlock", String(created?.block ?? formData.block ?? ""))
+        localStorage.setItem("userApartment", String(created?.apartment ?? formData.apartment ?? ""))
+      } catch (e) {
+        /* ignore if storage not available */
+      }
+
+      // redireciona para /inicio incluindo o nome (se existir)
+      router.push(`/inicio${displayName ? `?nome=${encodeURIComponent(displayName)}` : ""}`)
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar")
     } finally {

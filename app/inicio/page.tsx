@@ -1,35 +1,44 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
 export default function InicioPage() {
-  const [userName, setUserName] = useState<string | null>(null)
-  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // prioriza ?nome na URL; se não existir, usa localStorage (fluxo de login)
+  const [userName, setUserName] = useState<string | null>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const q = new URLSearchParams(window.location.search).get("nome")
+        if (q) return q
+        return localStorage.getItem("userName") || null
+      }
+    } catch {
+      /* ignore */
+    }
+    return null
+  })
+
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState({ left: 0, width: 0 })
 
   useEffect(() => {
-    let mounted = true
-    // marca que o componente já montou (evita flash)
-    // garante chamada para /api/me na raiz (evita /inicio/api/me)
-    fetch(window.location.origin + "/api/me", { credentials: "include" })
-      .then((res) => (res.ok ? res.json().catch(() => null) : null))
-      .then((data) => {
-        if (!mounted) return
-        // usa "nome" do banco; fallback para "name"
-        if (data?.nome) setUserName(String(data.nome))
-        else if (data?.name) setUserName(String(data.name))
-      })
-      .catch(() => {
-        /* fail silently for now */
-      })
-    return () => {
-      mounted = false
+    const q = searchParams?.get("nome")
+    if (q) {
+      setUserName(q)
+      try { localStorage.setItem("userName", q) } catch {}
+      return
     }
-  }, [])
+    // fallback: se veio do login, pega do localStorage
+    try {
+      const s = localStorage.getItem("userName")
+      if (s) setUserName(s)
+    } catch {}
+  }, [searchParams])
 
+  // medição do container para nav (mantém comportamento antigo)
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current
@@ -37,7 +46,6 @@ export default function InicioPage() {
       const r = el.getBoundingClientRect()
       setNavDims({ left: r.left, width: r.width })
     }
-    // measure now and on resize
     measure()
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
