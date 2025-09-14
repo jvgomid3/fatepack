@@ -144,7 +144,7 @@ export default function RecuperarSenhaPage() {
       if (phoneMatch && blockMatch && aptMatch) {
         setStep("reset")
       } else {
-        setError("Ops! As informações não coincidem com o e-mail informado.")
+        setError("❌ Ops! As informações não coincidem com o e-mail informado.")
       }
     } catch (err) {
       console.error("recuperar-senha: erro handleVerify", err)
@@ -183,7 +183,7 @@ export default function RecuperarSenhaPage() {
       }
 
       // sucesso: atualizou no banco (não redirecionar automaticamente)
-      setSuccess("Senha redefinida com sucesso.")
+      setSuccess("✅ Senha redefinida com sucesso!")
       setNewPassword("")
       setConfirmPassword("")
       // aguarda 1.2s e retorna ao login
