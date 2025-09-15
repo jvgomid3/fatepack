@@ -29,12 +29,21 @@ const capFirst = (s: string) => {
 const formatarMes = (ym: string) => {
   const [ano, mes] = ym.split("-")
   const nomes = [
-    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
   ]
   const idx = Number(mes)
   if (!ano || !idx || idx < 1 || idx > 12) return ym
   return `${nomes[idx - 1]} ${ano}`
+}
+
+// formata "YYYY-MM-DDTHH:mm:ssZ" -> "DD/MM/YYYY HH:mm"
+function formatBRDateTime(v?: string) {
+  if (!v) return ""
+  const d = new Date(v)
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 export default function HistoricoPage() {
@@ -47,7 +56,7 @@ export default function HistoricoPage() {
       localStorage.removeItem("userApartment")
       localStorage.removeItem("currentUser")
       localStorage.removeItem("user")
-    } catch {}
+    } catch { }
     router.replace("/")
     setTimeout(() => window.location.replace("/"), 100)
   }
@@ -95,34 +104,34 @@ export default function HistoricoPage() {
     return () => window.removeEventListener("resize", measure)
   }, [])
 
-  // carrega do banco sempre que filtros mudarem (e a cada 30s, com os filtros atuais)
+  // carrega do banco (admin: todas as encomendas)
   useEffect(() => {
     const load = async () => {
-      const params = new URLSearchParams()
-      if (filtroEmpresa) params.set("empresa", filtroEmpresa)
-      if (filtroMes)     params.set("mes", filtroMes)
-      if (filtroBloco)   params.set("bloco", filtroBloco)
-      if (filtroApto)    params.set("apartamento", filtroApto)
-
-      const res = await fetch(`/api/encomendas?${params.toString()}&ts=${Date.now()}`, { cache: "no-store" })
+      const token = localStorage.getItem("token") || ""
+      const res = await fetch(`/api/encomendas?ts=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
 
-      const list: Encomenda[] = (data?.rows || []).map((row: any) => ({
-        id: String(row.id_encomenda ?? ""),
+      // API /api/encomendas (admin) retorna array de rows com:
+      // id, empresa_entrega, data_recebimento, bloco, apartamento, nome, recebido_por,
+      // retirado_por, data_retirada
+      const list: Encomenda[] = (Array.isArray(data) ? data : []).map((row: any) => ({
+        id: String(row.id ?? row.id_encomenda ?? ""),
         bloco: String(row.bloco ?? ""),
         apartamento: String(row.apartamento ?? ""),
         morador: String(row.nome ?? ""),
-        empresa: String(row.empresa_entrega ?? ""),
-        dataRecebimento: String(row.data_recebimento_fmt ?? ""),
+        empresa: String(row.empresa_entrega ?? row.empresa ?? ""),
+        dataRecebimento: formatBRDateTime(row.data_recebimento ?? row.dataRecebimento),
         status: `Recebido por ${row.recebido_por ?? "-"}`,
-        entregue: Boolean(row.nome_retirou),
-        retiradoPor: row.nome_retirou ?? undefined,
-        dataRetirada: row.data_retirada_fmt ?? undefined,
+        entregue: Boolean(row.retirado_por || row.data_retirada),
+        retiradoPor: row.retirado_por ?? row.nome_retirou ?? "",
+        dataRetirada: formatBRDateTime(row.data_retirada ?? row.data_retirada_fmt),
       }))
 
       setEncomendas(list)
-      if (Array.isArray(data?.months)) setMesesDisponiveis(data.months)
     }
 
     load().catch((e) => {
@@ -130,9 +139,10 @@ export default function HistoricoPage() {
       setEncomendas([])
     })
 
-    const id = setInterval(() => load().catch(() => {}), 30000)
+    // atualiza a cada 30s
+    const id = setInterval(() => load().catch(() => { }), 30000)
     return () => clearInterval(id)
-  }, [filtroEmpresa, filtroMes, filtroBloco, filtroApto])
+  }, [])
 
   // opções (derivadas do resultado atual, incluindo dependência Bloco -> Apt)
   const empresasUnicas = [...new Set(encomendas.map((e) => e.empresa))].sort()
@@ -249,14 +259,16 @@ export default function HistoricoPage() {
               <div key={encomenda.id} className={`package-card ${encomenda.entregue ? "success" : ""}`}>
                 <h3>{encomenda.morador}</h3>
                 <p>
-                  <strong>Bloco:</strong> {encomenda.bloco} | <strong>Apt:</strong> {encomenda.apartamento}
+                  <strong>Bloco:</strong>{" "} {encomenda.bloco} {" | "} <strong>Apt:</strong>{" "} {encomenda.apartamento}
                 </p>
                 <p>
-                  <strong>Empresa:</strong> {encomenda.empresa}
+                  <strong>Empresa:</strong>{" "} {encomenda.empresa}
                 </p>
                 <p>
-                  <strong>Recebido em:</strong> {encomenda.dataRecebimento}
+                  <strong>Recebido em:</strong>{" "} {encomenda.dataRecebimento}
                 </p>
+
+
                 <p className="status">{encomenda.status}</p>
 
                 {encomenda.entregue && (
@@ -269,14 +281,14 @@ export default function HistoricoPage() {
                       border: "1px solid var(--success)",
                     }}
                   >
-                    <p style={{ color: "var(--success)", fontWeight: "600", margin: "0 0 0.5rem 0" }}>
+                    <p style={{ color: "var(--success)", fontWeight: 600, margin: "0 0 0.5rem 0" }}>
                       ✅ Encomenda Retirada
                     </p>
-                    <p style={{ margin: "0", fontSize: "0.9rem" }}>
-                      <strong>Retirado por:</strong> {encomenda.retiradoPor}
+                    <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                      <strong>Retirado por:</strong>{" "} {encomenda.retiradoPor || "-"}
                     </p>
-                    <p style={{ margin: "0", fontSize: "0.9rem" }}>
-                      <strong>Retirado às:</strong> {encomenda.dataRetirada}
+                    <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                      <strong>Retirado às:</strong>{" "} {encomenda.dataRetirada || "-"}
                     </p>
                   </div>
                 )}
@@ -327,11 +339,11 @@ export default function HistoricoPage() {
                               const novas = encomendas.map((e) =>
                                 e.id === encomenda.id
                                   ? {
-                                      ...e,
-                                      entregue: true,
-                                      retiradoPor: String(data?.nome_retirou || nome),
-                                      dataRetirada: String(data?.data_retirada_fmt || ""),
-                                    }
+                                    ...e,
+                                    entregue: true,
+                                    retiradoPor: String(data?.nome_retirou || nome),
+                                    dataRetirada: String(data?.data_retirada_fmt || ""),
+                                  }
                                   : e
                               )
                               setEncomendas(novas)

@@ -38,6 +38,10 @@ export default function HomePage() {
   const [registerLoading, setRegisterLoading] = useState(false) // <- novo
   const router = useRouter()
 
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginSenha, setLoginSenha] = useState("")
+  const [loginErr, setLoginErr] = useState("")
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -53,38 +57,28 @@ export default function HomePage() {
   }
 
   // LOGIN SOMENTE VIA BD
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setError?.("")
-
-    const emailTrim = formData.email.trim().toLowerCase()
-    // removido: autenticação hardcoded do "admin"
-    // a validação de admin vem do backend (campo `tipo`)
+    setLoginErr("")
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-        credentials: "include",
+        body: JSON.stringify({ email: loginEmail, senha: loginSenha }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || "Falha no login")
-
-      // grava dados retornados pelo backend (backend deve retornar `tipo`)
-      const tipo = data?.tipo || "morador"
-      localStorage.setItem("userType", String(tipo))
-      localStorage.setItem("userName", data?.name || data?.email?.split?.("@")?.[0] || "")
-      if (data?.block) localStorage.setItem("userBlock", String(data.block))
-      if (data?.apartment) localStorage.setItem("userApartment", String(data.apartment))
-
-      // redireciona conforme role: admins -> /registrar, demais -> /inicio
-      if (tipo === "admin") {
-        router.push("/registrar")
-      } else {
-        router.push("/inicio")
+      if (!res.ok) {
+        setLoginErr(data?.error || "Falha no login")
+        return
       }
-    } catch (err: any) {
-      setError(err.message || "Erro ao autenticar")
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("userName", data.nome || "")
+      localStorage.setItem("userType", data.tipo || "")
+      localStorage.setItem("userBlock", data.bloco || "")
+      localStorage.setItem("userApartment", data.apto || data.apartamento || "")
+      window.location.href = "/encomendas"
+    } catch {
+      setLoginErr("Falha no login")
     }
   }
 
@@ -325,15 +319,15 @@ export default function HomePage() {
           </div>
 
           {isLogin ? (
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleLogin} autoComplete="on">
               <div className="form-group">
                 <label htmlFor="email">E-mail:</label>
                 <input
                   type="text"
                   id="email"
                   name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="Digite seu e-mail"
                   required
                   style={{
@@ -352,9 +346,9 @@ export default function HomePage() {
                 <input
                   type="password"
                   id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
+                  name="senha"
+                  value={loginSenha}
+                  onChange={(e) => setLoginSenha(e.target.value)}
                   placeholder="Digite sua senha"
                   required
                   style={{
@@ -386,7 +380,7 @@ export default function HomePage() {
                 Esqueci minha senha
               </Link>
 
-              {error && (
+              {loginErr && (
                 <div
                   style={{
                     color: "#e74c3c",
@@ -399,7 +393,7 @@ export default function HomePage() {
                     border: "1px solid #fecaca",
                   }}
                 >
-                  {error}
+                  {loginErr}
                 </div>
               )}
 

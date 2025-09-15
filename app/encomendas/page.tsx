@@ -1,7 +1,6 @@
 "use client"
-
-import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 
@@ -22,12 +21,14 @@ interface Encomenda {
 
 export default function EncomendasPage() {
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [apartamentoFiltro, setApartamentoFiltro] = useState("")
   const [user, setUser] = useState<any>(null)
   const [myBlock, setMyBlock] = useState<string | null>(null)
   const [myApt, setMyApt] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState("")
+  const [erro, setErro] = useState("")
   const backLinkRef = useRef<HTMLAnchorElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -62,39 +63,41 @@ export default function EncomendasPage() {
     // Carrega do banco (sem cache)
     const loadFromDB = async () => {
       try {
-        const res = await fetch(`/api/encomendas?ts=${Date.now()}`, { cache: "no-store" })
-        const data = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao buscar encomendas")
+        const token = localStorage.getItem("token")
+        if (!token) { router.replace("/"); return }
 
-        const list: Encomenda[] = (data?.rows || []).map((row: any) => {
-          return {
-            id: String(row.id_encomenda ?? ""),
-            bloco: String(row.bloco ?? ""),
-            apartamento: String(row.apartamento ?? ""),
-            morador: String(row.nome ?? ""),
-            empresa: String(row.empresa_entrega ?? ""),
-            dataRecebimento: String(row.data_recebimento_fmt ?? ""),
-            status: `Recebido por ${row.recebido_por ?? "-"}`,
-            isNew: Boolean(row.is_new ?? false),
-            recebidoPor: row.recebido_por ?? undefined,
-            entregue: Boolean(row.nome_retirou),
-            retiradoPor: row.nome_retirou ?? undefined,
-            dataRetirada: row.data_retirada_fmt ?? undefined,
-          }
+        fetch(`/api/encomendas?ts=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
         })
-
-        setEncomendas(list)
-        // opcional: sincroniza localStorage para fallback offline
-        localStorage.setItem("encomendas", JSON.stringify(list))
+          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+          .then((data) => {
+            const items = Array.isArray(data)
+              ? data.map((r: any) => ({
+                  id: r.id ?? r.id_encomenda,
+                  bloco: r.bloco,
+                  apartamento: r.apartamento,
+                  empresa_entrega: r.empresa_entrega ?? r.empresa,
+                  data_recebimento: r.data_recebimento,
+                  retirado_por: r.retirado_por ?? r.nome_retirou,
+                  data_retirada: r.data_retirada,
+                  nome: r.nome,
+                }))
+              : []
+            setEncomendas(items)
+            setErro("")
+          })
+          .catch(() => { setErro("Não foi possível carregar as encomendas."); setEncomendas([]) })
       } catch (e) {
         // fallback ao localStorage se a API falhar
         const cached = JSON.parse(localStorage.getItem("encomendas") || "[]")
         setEncomendas(cached)
+        setErro("Não foi possível carregar as encomendas.")
       }
     }
 
     loadFromDB()
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const measure = () => {
@@ -125,7 +128,14 @@ export default function EncomendasPage() {
     localStorage.setItem("encomendas", JSON.stringify(encomendasAtualizadas))
   }
 
-  const isAdmin = user?.tipo === "admin"
+  useEffect(() => {
+    const t = (localStorage.getItem("userType") || "").toLowerCase()
+    const admin = t === "admin"
+    setIsAdmin(admin)
+    if (admin) router.replace("/historico")
+  }, [router])
+
+  if (isAdmin) return null
 
   // Base: admin vê todas; morador vê apenas dele (bloco/apto)
   const base = isAdmin
@@ -192,6 +202,8 @@ export default function EncomendasPage() {
               />
             </div>
           </div>
+
+          {erro && <div style={{ color: "crimson" }}>{erro}</div>}
 
           {encomendasNovas.length > 0 && (
             <div>
@@ -297,6 +309,8 @@ export default function EncomendasPage() {
         .container {
           padding-bottom: 80px;
         }
+        .field { display: flex; align-items: center; gap: 6px; }
+        .label { font-weight: 700; }
       `}</style>
     </>
   )
@@ -332,14 +346,31 @@ function PackageCard({
         <div style={{ flex: 1 }}>
           <h3>{encomenda.morador}</h3>
           <p>
-            <strong>Bloco:</strong> {encomenda.bloco} | <strong>Apt:</strong> {encomenda.apartamento}
+            <strong>Bloco:</strong> {encomenda.bloco} | <strong>Apartamento:</strong> {encomenda.apartamento}
           </p>
-          <p>
-            <strong>Empresa:</strong> {encomenda.empresa}
-          </p>
-          <p>
-            <strong>Recebido em:</strong> {encomenda.dataRecebimento}
-          </p>
+          <div className="field">
+            <strong className="label">Empresa:</strong>{" "}
+            <span className="value">{encomenda.empresa_entrega || "-"}</span>
+          </div>
+          <div className="field">
+            <strong className="label">Recebido em:</strong>{" "}
+            <span className="value">{formatDateTimeBR(encomenda.data_recebimento)}</span>
+          </div>
+
+          {/* mostrar retirada quando existir algum dos campos */}
+          {(encomenda.retirado_por || encomenda.data_retirada) && (
+            <>
+              <div className="field">
+                <strong className="label">Retirado por:</strong>{" "}
+                <span className="value">{encomenda.retirado_por || "-"}</span>
+              </div>
+              <div className="field">
+                <strong className="label">Retirado às:</strong>{" "}
+                <span className="value">{formatDateTimeBR(encomenda.data_retirada)}</span>
+              </div>
+            </>
+          )}
+
           <p className="status">{encomenda.status}</p>
 
           {encomenda.entregue && (
@@ -420,4 +451,12 @@ function PackageCard({
       )}
     </div>
   )
+}
+
+function formatDateTimeBR(value?: string) {
+  if (!value) return "-"
+  const d = new Date(value)
+  return isNaN(d.getTime())
+    ? "-"
+    : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }

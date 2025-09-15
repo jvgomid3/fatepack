@@ -158,6 +158,60 @@ export default function RegistrarPage() {
     return () => window.removeEventListener("resize", measure)
   }, [])
 
+  function normalize2(v: string) {
+    const n = v.replace(/\D/g, "").trim()
+    return n.padStart(2, "0")
+  }
+
+  async function handleRegistrar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const token = localStorage.getItem("token") || ""
+    const fd = new FormData(e.currentTarget)
+
+    const empresa_entrega = String(fd.get("empresa_entrega") ?? fd.get("empresa") ?? "").trim()
+    const bloco = normalize2(String(fd.get("bloco") ?? ""))
+    const apartamento = normalize2(String(fd.get("apartamento") ?? fd.get("apto") ?? ""))
+    const nome = String(fd.get("nome") ?? fd.get("destinatario") ?? "").trim()
+    const recebido_por = String(localStorage.getItem("userName") || "").trim()
+
+    if (!empresa_entrega || !bloco || !apartamento || !nome) {
+      alert("Preencha Empresa, Bloco, Apartamento e Destinatário.")
+      return
+    }
+
+    const res = await fetch("/api/encomendas", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ empresa_entrega, bloco, apartamento, nome, recebido_por }),
+    })
+
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      alert(data?.error || "Falha ao registrar")
+      return
+    }
+
+    // sucesso: mostrar alerta de confirmação
+    const recPor = String(data?.recebido_por || recebido_por)
+    setLastRecebidoPor(recPor)
+    setShowAlert(true)
+    // opcional: rolar para o topo para o usuário ver o alerta
+    containerRef.current?.scrollTo?.({ top: 0, behavior: "smooth" })
+
+    // limpar formulário
+    setBloco("")
+    setApartamento("")
+    setMorador("")
+    setEmpresa("")
+    setEmpresaIsOutro(false)
+
+    // esconder alerta após alguns segundos
+    setTimeout(() => setShowAlert(false), 3500)
+  }
+
   return (
     <>
       <AdminGate />
@@ -186,42 +240,44 @@ export default function RegistrarPage() {
           )}
 
           <div className="card">
-            <form onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Bloco</label>
-                  <select className="form-select" value={bloco} onChange={(e) => setBloco(e.target.value)} required>
-                    <option value="">Selecione o bloco</option>
-                    {blocos.map((b) => (
-                      <option key={b} value={b}>
-                        Bloco {b}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <form onSubmit={handleRegistrar}>
+              {/* Bloco */}
+              <div className="form-group">
+                <label className="form-label">Bloco</label>
+                <select name="bloco" className="form-select" value={bloco} onChange={(e) => setBloco(e.target.value)} required>
+                  <option value="">Selecione o bloco</option>
+                  {blocos.map((b) => (
+                    <option key={b} value={b}>
+                      Bloco {b}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="form-group">
-                  <label className="form-label">Apartamento</label>
-                  <select
-                    className="form-select"
-                    value={apartamento}
-                    onChange={(e) => setApartamento(e.target.value)}
-                    required
-                  >
-                    <option value="">Selecione o apartamento</option>
-                    {apartamentos.map((apt) => (
-                      <option key={apt} value={apt}>
-                        Apt {apt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Apartamento */}
+              <div className="form-group">
+                <label className="form-label">Apartamento</label>
+                <select
+                  name="apartamento"
+                  className="form-select"
+                  value={apartamento}
+                  onChange={(e) => setApartamento(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione o apartamento</option>
+                  {apartamentos.map((apt) => (
+                    <option key={apt} value={apt}>
+                      Apt {apt}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Nome do Morador */}
               <div className="form-group">
-                <label className="form-label">Nome do Morador</label>
+                <label className="form-label">Destinatário</label>
                 <input
+                  name="nome"
                   type="text"
                   className="form-input"
                   value={morador}
@@ -235,6 +291,7 @@ export default function RegistrarPage() {
               <div className="form-group">
                 <label className="form-label">Empresa</label>
                 <select
+                  name="empresa_entrega"
                   className="form-select"
                   value={empresaIsOutro ? "Outra empresa" : empresa}
                   onChange={(e) => {
