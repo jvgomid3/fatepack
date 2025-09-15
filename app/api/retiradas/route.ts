@@ -49,9 +49,8 @@ export async function POST(req: Request) {
 
     const r = await client.query(
       `INSERT INTO retirada (id_encomenda, nome_retirou, data_retirada)
-       VALUES ($1, $2, now())
-       RETURNING id_retirada, id_encomenda, nome_retirou,
-                 data_retirada,
+       VALUES ($1, $2, (NOW() - INTERVAL '3 hours'))
+       RETURNING id_retirada, nome_retirou, data_retirada,
                  to_char(data_retirada, 'DD/MM/YYYY HH24:MI') AS data_retirada_fmt`,
       [id_encomenda, nome_retirou]
     )

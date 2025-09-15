@@ -116,7 +116,7 @@ export async function POST(req: Request) {
     const r = await client.query(
       `INSERT INTO encomenda
          (empresa_entrega, data_recebimento, id_apartamento, bloco, apartamento, nome, recebido_por)
-       VALUES ($1, NOW(), $2, $3, $4, $5, $6)
+       VALUES ($1, (NOW() - INTERVAL '3 hours'), $2, $3, $4, $5, $6)
        RETURNING id_encomenda AS id`,
       [empresa, idApto, bloco, apartamento, nome, recebidoPor]
     )
