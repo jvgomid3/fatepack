@@ -319,7 +319,7 @@ export default function HistoricoPage() {
                         />
                         <button
                           className="btn btn-primary"
-                          style={{ padding: "0.5rem 1rem" }}
+                          style={{ padding: "0.5rem 1rem", transform: "translateY(12px)" }}
                           onClick={async () => {
                             const nome = capFirst(nomeRetirada.trim())
                             if (!nome) return
@@ -335,15 +335,9 @@ export default function HistoricoPage() {
                               })
                               const data = await res.json().catch(() => null)
                               if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao confirmar retirada")
-
                               const novas = encomendas.map((e) =>
                                 e.id === encomenda.id
-                                  ? {
-                                    ...e,
-                                    entregue: true,
-                                    retiradoPor: String(data?.nome_retirou || nome),
-                                    dataRetirada: String(data?.data_retirada_fmt || ""),
-                                  }
+                                  ? { ...e, entregue: true, retiradoPor: String(data?.nome_retirou || nome), dataRetirada: String(data?.data_retirada_fmt || "") }
                                   : e
                               )
                               setEncomendas(novas)
@@ -362,7 +356,7 @@ export default function HistoricoPage() {
                         </button>
                         <button
                           className="btn btn-outline"
-                          style={{ padding: "0.5rem 1rem", marginLeft: 8 }}
+                          style={{ padding: "0.5rem 1rem", display: "block", margin: "8px auto 0" }}
                           onClick={() => {
                             if (confirmLoadingId) return
                             setShowInputId(null)
