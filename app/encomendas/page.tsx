@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
+import { Home, LogOut } from "lucide-react"
 
 interface Encomenda {
   id: string
@@ -17,6 +18,13 @@ interface Encomenda {
   entregue?: boolean
   retiradoPor?: string
   dataRetirada?: string
+}
+
+// helper: capitaliza a primeira letra não-espaço
+const capFirst = (s: string) => {
+  const i = s.search(/\S/)
+  if (i === -1) return ""
+  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
 export default function EncomendasPage() {
@@ -72,16 +80,17 @@ export default function EncomendasPage() {
         })
           .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
           .then((data) => {
-            const items = Array.isArray(data)
+            const items: Encomenda[] = Array.isArray(data)
               ? data.map((r: any) => ({
                   id: r.id ?? r.id_encomenda,
                   bloco: r.bloco,
                   apartamento: r.apartamento,
-                  empresa_entrega: r.empresa_entrega ?? r.empresa,
-                  data_recebimento: r.data_recebimento,
-                  retirado_por: r.retirado_por ?? r.nome_retirou,
-                  data_retirada: r.data_retirada,
-                  nome: r.nome,
+                  morador: r.morador ?? r.nome ?? "",
+                  empresa: r.empresa_entrega ?? r.empresa ?? "",
+                  dataRecebimento: r.data_recebimento ?? r.dataRecebimento ?? "",
+                  status: r.status ?? "Recebida",
+                  retiradoPor: r.retirado_por ?? r.nome_retirou ?? r.retiradoPor,
+                  dataRetirada: r.data_retirada ?? r.dataRetirada,
                 }))
               : []
             setEncomendas(items)
@@ -154,12 +163,7 @@ export default function EncomendasPage() {
   const encomendasNovas = encomendasFiltradas.filter((enc) => enc.isNew)
   const encomendasVistas = encomendasFiltradas.filter((enc) => !enc.isNew)
 
-  // Capitaliza a primeira letra não-espaço
-  const capFirst = (s: string) => {
-    const i = s.search(/\S/)
-    if (i === -1) return ""
-    return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
-  }
+  // (capFirst movido para escopo global)
 
   const logout = () => {
     try {
@@ -256,61 +260,64 @@ export default function EncomendasPage() {
         </div>
 
         <nav
-          className="nav-menu"
+          id="encomendas-nav"
+          className="nav-menu nav-modern"
           style={{
             left: "50%",
-            transform: "translateX(-50%)", // centraliza horizontalmente
-            width: navDims.width,           // mantém mesma largura do container
+            transform: "translateX(-50%)",
+            width: navDims.width,
           }}
         >
+          {!isAdmin && (
+            <Link href="/inicio" className="nav-item" title="Início">
+              <Home className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Início</span>
+            </Link>
+          )}
+
           <button
             type="button"
             className="nav-item"
             onClick={logout}
             aria-label="Sair"
             title="Sair"
-            style={{ background: "transparent", border: "none", cursor: "pointer" }}
           >
-            <div className="nav-icon" aria-hidden="true">↩️</div>
-            Sair
+            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Sair</span>
           </button>
-
-          {isAdmin ? (
-            <>
-              <Link href="/registrar" className="nav-item">
-                <div className="nav-icon">📦</div>
-                Registrar Encomendas
-              </Link>
-              <Link href="/historico" className="nav-item">
-                <div className="nav-icon">📊</div>
-                Histórico
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/inicio" className="nav-item active">
-                <div className="nav-icon">🏠</div>
-                Início
-              </Link>
-            </>
-          )}
         </nav>
       </div>
 
       <style jsx>{`
-        .nav-menu {
-          position: fixed;
-          bottom: 0;
-          z-index: 1000;
-          background: var(--card, #fff);
-          border-top: 1px solid #e5e7eb;
-          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
-        }
-        .container {
-          padding-bottom: 80px;
-        }
+        /* base */
+        .nav-menu { position: fixed; bottom: 0; z-index: 1000; padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+        .container { padding-bottom: 80px; }
         .field { display: flex; align-items: center; gap: 6px; }
         .label { font-weight: 700; }
+
+        /* moderna com azul discreto */
+        #encomendas-nav.nav-modern {
+          background: rgba(255, 255, 255, 0.75);
+          backdrop-filter: saturate(180%) blur(12px);
+          -webkit-backdrop-filter: saturate(180%) blur(12px);
+          border-top: 1px solid rgba(2, 132, 199, 0.10);
+          box-shadow: 0 -6px 24px rgba(2, 132, 199, 0.12);
+        }
+        #encomendas-nav .nav-item {
+          display: inline-flex; align-items: center; justify-content: center;
+          gap: 8px; padding: 10px 14px; margin: 6px 8px; border-radius: 12px;
+          color: var(--muted-foreground);
+          transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+        }
+        #encomendas-nav .nav-item:hover { background: rgba(59, 130, 246, 0.10); color: var(--foreground); }
+        #encomendas-nav .nav-item:active { transform: translateY(1px); }
+        #encomendas-nav .nav-item.active {
+          background: linear-gradient(180deg, rgba(14, 165, 233, 0.20), rgba(59, 130, 246, 0.18));
+          color: var(--foreground);
+          border: 1px solid rgba(59, 130, 246, 0.30);
+        }
+        #encomendas-nav .nav-icon-svg { width: 18px; height: 18px; }
+        #encomendas-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
       `}</style>
     </>
   )
@@ -350,23 +357,23 @@ function PackageCard({
           </p>
           <div className="field">
             <strong className="label">Empresa:</strong>{" "}
-            <span className="value">{encomenda.empresa_entrega || "-"}</span>
+            <span className="value">{encomenda.empresa || "-"}</span>
           </div>
           <div className="field">
             <strong className="label">Recebido em:</strong>{" "}
-            <span className="value">{formatDateTimeBR(encomenda.data_recebimento)}</span>
+            <span className="value">{formatDateTimeBR(encomenda.dataRecebimento)}</span>
           </div>
 
           {/* mostrar retirada quando existir algum dos campos */}
-          {(encomenda.retirado_por || encomenda.data_retirada) && (
+          {(encomenda.retiradoPor || encomenda.dataRetirada) && (
             <>
               <div className="field">
                 <strong className="label">Retirado por:</strong>{" "}
-                <span className="value">{encomenda.retirado_por || "-"}</span>
+                <span className="value">{encomenda.retiradoPor || "-"}</span>
               </div>
               <div className="field">
                 <strong className="label">Retirado às:</strong>{" "}
-                <span className="value">{formatDateTimeBR(encomenda.data_retirada)}</span>
+                <span className="value">{formatDateTimeBR(encomenda.dataRetirada)}</span>
               </div>
             </>
           )}

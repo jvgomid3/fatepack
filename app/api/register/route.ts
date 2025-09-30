@@ -1,28 +1,48 @@
 import { NextResponse } from "next/server"
-import { Pool, PoolConfig } from "pg"
+import { Pool } from "pg"
 import bcrypt from "bcryptjs"
 
-function makePgConfig(): PoolConfig {
-  if (process.env.PGHOST || process.env.PGUSER || process.env.PGDATABASE) {
-    return {
-      host: process.env.PGHOST || "127.0.0.1",
-      port: Number(process.env.PGPORT || 5432),
-      user: process.env.PGUSER || "postgres",
-      password: process.env.PGPASSWORD || undefined,
-      database: process.env.PGDATABASE || "fatepack",
-      // ssl: { rejectUnauthorized: false }, // use se precisar
+function makePgConfig(): any {
+  const sslNeeded =
+    process.env.DATABASE_SSL === "true" ||
+    process.env.PGSSL === "true" ||
+    process.env.POSTGRES_SSLMODE === "require"
+
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL
+  if (url && url.trim().length > 0) {
+    try {
+      const u = new URL(String(url))
+      return {
+        host: u.hostname,
+        port: Number(u.port || 5432),
+        user: decodeURIComponent(u.username || "postgres"),
+        password: String(u.password || process.env.PGPASSWORD || ""),
+        database: decodeURIComponent((u.pathname || "/fatepack").slice(1) || "fatepack"),
+        ssl: sslNeeded ? { rejectUnauthorized: false } : undefined,
+      }
+    } catch {
+      return {
+        connectionString: url,
+        ssl: sslNeeded ? { rejectUnauthorized: false } : undefined,
+      }
     }
   }
-  const url = process.env.POSTGRES_URL
-  if (!url) throw new Error("Variáveis do PostgreSQL não configuradas")
-  return { connectionString: url /*, ssl: { rejectUnauthorized: false }*/ }
+
+  return {
+    host: process.env.PGHOST || "127.0.0.1",
+    port: Number(process.env.PGPORT || 5432),
+    user: process.env.PGUSER || "postgres",
+    password: String(process.env.PGPASSWORD ?? ""),
+    database: process.env.PGDATABASE || "fatepack",
+    ssl: sslNeeded ? { rejectUnauthorized: false } : undefined,
+  }
 }
 
 // Pool singleton
 const getPool = () => {
   const g = globalThis as any
   if (!g.__pgPool) g.__pgPool = new Pool(makePgConfig())
-  return g.__pgPool as Pool
+  return g.__pgPool as any
 }
 
 export async function POST(req: Request) {

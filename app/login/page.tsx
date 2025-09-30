@@ -37,12 +37,17 @@ export default function LoginPage() {
       }
 
       // grava sessão simples no localStorage (teste)
-      localStorage.setItem("token", data.token || "")
-      localStorage.setItem("userName", data.user?.nome || data.user?.displayName || username)
-      localStorage.setItem("displayName", data.user?.nome || data.user?.displayName || username)
-      localStorage.setItem("tipo", data.user?.tipo || "user")
+  localStorage.setItem("token", data.token || "")
+  localStorage.setItem("userName", data.user?.nome || data.user?.displayName || username)
+  localStorage.setItem("displayName", data.user?.nome || data.user?.displayName || username)
+  localStorage.setItem("userType", data.user?.tipo || data.tipo || "user")
+  if (data.user?.telefone) localStorage.setItem("userPhone", data.user.telefone)
+  if (data.user?.bloco) localStorage.setItem("userBlock", String(data.user.bloco))
+  if (data.user?.apto || data.user?.apartamento) localStorage.setItem("userApartment", String(data.user.apto ?? data.user.apartamento))
+  if (username) localStorage.setItem("userEmail", String(username).trim().toLowerCase())
 
-      router.push(data.redirect || "/inicio")
+  const role = String(data?.user?.tipo || data?.tipo || '').toLowerCase()
+  router.push(data.redirect || (role === 'admin' ? '/historico' : '/inicio'))
     } catch (err) {
       console.error("Login error:", err)
       setError("Erro ao autenticar")

@@ -23,14 +23,15 @@ export default function RecuperarSenhaPage() {
   }
 
   const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [block, setBlock] = useState("")
-  const [apartment, setApartment] = useState("")
+  // novo fluxo por etapas
+  const [step, setStep] = useState<"verify" | "send" | "code" | "reset">("verify")
+  const [checking, setChecking] = useState(false)
+  const [codeSending, setCodeSending] = useState(false)
+  const [inputCode, setInputCode] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isResetLoading, setIsResetLoading] = useState(false)
   const [success, setSuccess] = useState("")
-  const [step, setStep] = useState<"verify" | "reset">("verify")
   const [error, setError] = useState("")
   // derived helper: true quando ambos preenchidos e iguais
   const passwordsMatch = newPassword.length > 0 && confirmPassword.length > 0 && newPassword === confirmPassword
@@ -62,94 +63,54 @@ export default function RecuperarSenhaPage() {
     }
   }, [])
 
-  // normaliza telefone para comparar apenas dígitos
-  const normPhone = (s = "") => (s || "").toString().replace(/\D/g, "")
-
-  // normaliza identificadores (bloco/apartamento): remove não-dígitos e zeros à esquerda
-  const normId = (s = "") => {
-    const d = (s || "").toString().replace(/\D/g, "")
-    return d.replace(/^0+/, "") || d // se tudo zeros, retorna d (possível "0")
-  }
-
-  // valida diretamente no banco via API /api/usuarios
+  // Verifica se o e-mail existe no banco (Supabase) via /api/usuario
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (!email || !phone || !block || !apartment) {
-      setError("Preencha todos os campos para verificação")
+    if (!email) {
+      setError("Informe o e-mail.")
       return
     }
-
+    setChecking(true)
     try {
-      const qEmail = String(email).trim()
-      const res = await fetch(`/api/usuarios?email=${encodeURIComponent(qEmail)}`, { cache: "no-store", headers: { Accept: "application/json" } })
-
-      // tenta pegar body mesmo quando não ok
-      let body: any = null
-      try { body = await res.clone().json() } catch { body = await res.text().catch(() => null) }
-
+      const res = await fetch(`/api/usuario?email=${encodeURIComponent(String(email).trim().toLowerCase())}`, { cache: "no-store" })
       if (!res.ok) {
-        console.debug("recuperar-senha: api /api/usuarios response", res.status, body)
-        const msg = (body && typeof body === "object" && body.error) ? body.error : `Erro na consulta (${res.status})`
-        setError(msg)
+        setError("❌  Usuário não encontrado.")
         return
       }
-
-      const data = body && typeof body === "object" ? body : await res.json().catch(() => null)
-      const user = data?.user
-      if (!user) {
-        console.debug("recuperar-senha: user not found in API body", data)
-        setError("E-mail não encontrado")
-        return
-      }
-
-      // usa a coluna telefone do DB
-      const dbPhoneRaw = (user.telefone || "") as string
-      const dbBlockRaw = (user.bloco || user.block || "") as string
-      const dbAptoRaw = (user.apartamento || user.apto || user.apartment || "") as string
-
-      if (!dbPhoneRaw || !dbBlockRaw || !dbAptoRaw) {
-        console.debug("recuperar-senha: registro incompleto no DB", { dbPhoneRaw, dbBlockRaw, dbAptoRaw, user })
-        setError("Registro incompleto no banco (telefone/bloco/apartamento ausentes). Contate o administrador.")
-        return
-      }
-
-      const inputPhone = normPhone(phone)
-      const dbPhone = normPhone(dbPhoneRaw)
-
-      // match tolerante: igualdade ou sufixo (ignora DDI/zeros)
-      const last = (s: string, n = 8) => (s || "").slice(-n)
-      const phoneMatch =
-        !!inputPhone &&
-        !!dbPhone &&
-        (inputPhone === dbPhone ||
-          dbPhone.endsWith(inputPhone) ||
-          inputPhone.endsWith(dbPhone) ||
-          last(dbPhone, 8) === last(inputPhone, 8))
-
-      const inputBlock = normId(block)
-      const dbBlock = normId(dbBlockRaw)
-      const blockMatch = inputBlock === dbBlock
-
-      const inputApto = normId(apartment)
-      const dbApto = normId(dbAptoRaw)
-      const aptMatch = inputApto === dbApto
-
-      console.debug("recuperar-senha: comparação", {
-        inputPhone, dbPhone, phoneMatch,
-        inputBlock, dbBlock, blockMatch,
-        inputApto, dbApto, aptMatch,
-      })
-
-      if (phoneMatch && blockMatch && aptMatch) {
-        setStep("reset")
-      } else {
-        setError("❌ Ops! As informações não coincidem com o e-mail informado.")
-      }
+      // e-mail existe
+      setStep("send")
     } catch (err) {
       console.error("recuperar-senha: erro handleVerify", err)
-      setError("Falha ao verificar dados. Tente novamente.")
+      setError("Falha ao verificar e-mail.")
+    } finally {
+      setChecking(false)
     }
+  }
+
+  // Simula envio do código
+  const handleSendCode = async () => {
+    setError("")
+    setSuccess("")
+    setCodeSending(true)
+    try {
+      // Aqui poderíamos chamar uma API para enviar e-mail. Como é simulado, apenas avançamos.
+      await new Promise((r) => setTimeout(r, 600))
+      setStep("code")
+    } finally {
+      setCodeSending(false)
+    }
+  }
+
+  const handleValidateCode = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    const code = String(inputCode).trim()
+    if (code !== "1234") {
+      setError("❌ Código inválido.")
+      return
+    }
+    setStep("reset")
   }
 
   const handleReset = async (e: React.FormEvent) => {
@@ -171,10 +132,10 @@ export default function RecuperarSenhaPage() {
 
     setIsResetLoading(true)
     try {
-      const res = await fetch("/api/usuarios/reset", {
+      const res = await fetch("/api/redefinir-senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: newPassword }),
+        body: JSON.stringify({ email: String(email).trim().toLowerCase(), senha: newPassword, codigo: String(inputCode).trim() }),
       })
       const body = await res.json().catch(() => null)
       if (!res.ok) {
@@ -182,8 +143,8 @@ export default function RecuperarSenhaPage() {
         return
       }
 
-      // sucesso: atualizou no banco (não redirecionar automaticamente)
-      setSuccess("✅ Senha redefinida com sucesso!")
+  // sucesso: atualizou no banco (não redirecionar automaticamente)
+  setSuccess("Senha redefinida com sucesso!")
       setNewPassword("")
       setConfirmPassword("")
       // aguarda 1.2s e retorna ao login
@@ -195,15 +156,7 @@ export default function RecuperarSenhaPage() {
     }
   }
 
-  // formata telefone enquanto o usuário digita -> (11) 99999-9999 ou (11) 9999-9999
-  const formatPhoneInput = (value: string) => {
-    const d = (value || "").replace(/\D/g, "").slice(0, 11) // apenas dígitos, max 11
-    if (!d) return ""
-    if (d.length <= 2) return `(${d}`
-    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-  }
+  // (sem máscara de telefone no novo fluxo)
 
   return (
     <>
@@ -223,137 +176,108 @@ export default function RecuperarSenhaPage() {
           </div>
 
           <div className="card" style={{ maxWidth: 720 }}>
-             {step === "verify" ? (
-               <form onSubmit={handleVerify}>
-                 <div className="form-group">
-                   <label>E-mail:</label>
-                   <input
-                     id="email"
-                     name="email"
-                     type="email"
-                     autoComplete="email"
-                     placeholder="seu@email.com"
-                     value={email}
-                     onChange={(e) => setEmail(e.target.value)}
-                     className="form-input"
-                     autoCapitalize="off"
-                     spellCheck={false}
-                     required
-                   />
-                 </div>
+            {/* Etapa 1: Verificar e-mail */}
+            {step === "verify" && (
+              <form onSubmit={handleVerify}>
+                <div className="form-group">
+                  <label>E-mail:</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="form-input"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    required
+                  />
+                </div>
+                {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
+                <button type="submit" className={`btn btn-primary ${checking ? "btn-loading" : ""}`} style={{ marginTop: 12, width: "100%" }} disabled={checking}>
+                  {checking ? "Verificando..." : "Verificar"}
+                </button>
+              </form>
+            )}
 
-                 <div className="form-group">
-                   <label>Telefone:</label>
-                   <input
-                     id="phone"
-                     name="phone"
-                     type="tel"
-                     inputMode="tel"
-                     autoComplete="tel"
-                     placeholder="(11) 99999-9999"
-                     value={phone}
-                     onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
-                     className="form-input"
-                     autoCapitalize="off"
-                     spellCheck={false}
-                     required
-                   />
-                 </div>
+            {/* Etapa 2: Enviar código */}
+            {step === "send" && (
+              <div>
+                <div className="pw-match" style={{ marginTop: 0, marginBottom: 12 }}>
+                  <span>✅ Usuário encontrado.</span>
+                </div>
+                <button type="button" className={`btn btn-primary ${codeSending ? "btn-loading" : ""}`} onClick={handleSendCode} disabled={codeSending} style={{ width: "100%" }}>
+                  {codeSending ? "Enviando..." : "Enviar código por e-mail"}
+                </button>
+                {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
+              </div>
+            )}
 
-                 <div className="form-group">
-                   <label>Bloco:</label>
-                   <select value={block} onChange={(e) => setBlock(e.target.value)} className="form-select" required>
-                     <option value="">Selecione o bloco</option>
-                     <option value="01">Bloco 01</option>
-                     <option value="02">Bloco 02</option>
-                     <option value="03">Bloco 03</option>
-                     <option value="04">Bloco 04</option>
-                     <option value="05">Bloco 05</option>
-                     <option value="06">Bloco 06</option>
-                     <option value="07">Bloco 07</option>
-                     <option value="08">Bloco 08</option>
-                     <option value="09">Bloco 09</option>
-                     <option value="10">Bloco 10</option>
-                     <option value="11">Bloco 11</option>
-                     <option value="12">Bloco 12</option>
-                   </select>
-                 </div>
+            {/* Etapa 3: Inserir código recebido */}
+            {step === "code" && (
+              <form onSubmit={handleValidateCode}>
+                <div className="form-group">
+                  <label>Código: </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Insira o código recebido"
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
+                {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
+                <button type="submit" className="btn btn-primary" style={{ marginTop: 12, width: "100%" }}>
+                  Validar código
+                </button>
+              </form>
+            )}
 
-                 <div className="form-group">
-                   <label>Apartamento:</label>
-                   <select value={apartment} onChange={(e) => setApartment(e.target.value)} className="form-select" required>
-                     <option value="">Selecione o apartamento</option>
-                     <option value="01">Apartamento 01</option>
-                     <option value="02">Apartamento 02</option>
-                     <option value="03">Apartamento 03</option>
-                     <option value="04">Apartamento 04</option>
-                     <option value="11">Apartamento 11</option>
-                     <option value="12">Apartamento 12</option>
-                     <option value="13">Apartamento 13</option>
-                     <option value="14">Apartamento 14</option>
-                     <option value="21">Apartamento 21</option>
-                     <option value="22">Apartamento 22</option>
-                     <option value="23">Apartamento 23</option>
-                     <option value="24">Apartamento 24</option>
-                     <option value="31">Apartamento 31</option>
-                     <option value="32">Apartamento 32</option>
-                     <option value="33">Apartamento 33</option>
-                     <option value="34">Apartamento 34</option>
-                   </select>
-                 </div>
-
-                 {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
-
-                 <button type="submit" className="btn btn-primary" style={{ marginTop: 12, width: "100%" }}>
-                   Verificar dados
-                 </button>
-               </form>
-             ) : (
-               <form onSubmit={handleReset}>
-                 <p style={{ marginTop: 0, marginBottom: "0.95rem", color: "var(--muted-foreground)" }}>
-                   Defina a nova senha
-                 </p>
-                
-                 <div className="form-group">
-                   <label>Nova senha</label>
-                   <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="form-input" required />
-                 </div>
-                
-                 <div className="form-group">
-                   <label>Confirme a nova senha</label>
-                   <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input" required />
-                 </div>
- 
-                {/* mensagem de coincidência / discrepância (mostra quando o usuário digitou confirmação) */}
+            {/* Etapa 4: Redefinir senha */}
+            {step === "reset" && (
+              <form onSubmit={handleReset}>
+                <p style={{ marginTop: 0, marginBottom: "0.95rem", color: "var(--muted-foreground)" }}>
+                  Defina a nova senha
+                </p>
+                <div className="form-group">
+                  <label>Nova senha</label>
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="form-input" required />
+                </div>
+                <div className="form-group">
+                  <label>Confirme a nova senha</label>
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input" required />
+                </div>
                 {confirmPassword.length > 0 && (
                   <div className={passwordsMatch ? "pw-match" : "pw-mismatch"}>
                     {passwordsMatch ? "✅ As senhas coincidem." : "❌ As senhas não coincidem."}
                   </div>
                 )}
-
-                 {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
-                 {success && (
+                {error && <div className="alert" style={{ marginTop: 8, color: "#b91c1c" }}>{error}</div>}
+                {success && (
                   <div className="pw-match" style={{ marginTop: 8 }}>
                     <span>✅ {success}</span>
                   </div>
                 )}
-                 {success && (
+                {success && (
                   <div style={{ marginTop: 15, textAlign: "center" }}>
                     <Link href="/" className="btn btn-primary login-btn">Fazer Login</Link>
                   </div>
                 )}
- 
-                 <button
-                   type="submit"
-                   className={`btn btn-primary ${isResetLoading ? "btn-loading" : ""}`}
-                   style={{ marginTop: 12, width: "100%", display: success ? "none" : undefined }}
-                   disabled={isResetLoading}
-                 >
-                   {isResetLoading ? "Redefinindo..." : "Redefinir senha"}
-                 </button>
-               </form>
-             )}
-           </div>
+                <button
+                  type="submit"
+                  className={`btn btn-primary ${isResetLoading ? "btn-loading" : ""}`}
+                  style={{ marginTop: 12, width: "100%", display: success ? "none" : undefined }}
+                  disabled={isResetLoading}
+                >
+                  {isResetLoading ? "Redefinindo..." : "Redefinir senha"}
+                </button>
+              </form>
+            )}
+          </div>
          </div>
 
          <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width, transform: "none" }}>

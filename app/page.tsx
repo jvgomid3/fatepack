@@ -1,5 +1,6 @@
 "use client"
 import React, { useState } from "react"
+import { Building2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -72,11 +73,19 @@ export default function HomePage() {
         return
       }
       localStorage.setItem("token", data.token)
-      localStorage.setItem("userName", data.nome || "")
-      localStorage.setItem("userType", data.tipo || "")
-      localStorage.setItem("userBlock", data.bloco || "")
-      localStorage.setItem("userApartment", data.apto || data.apartamento || "")
-      window.location.href = "/encomendas"
+      localStorage.setItem("userName", data.user?.nome || data.nome || "")
+      localStorage.setItem("userType", data.user?.tipo || data.tipo || "")
+      localStorage.setItem("userBlock", data.user?.bloco || data.bloco || "")
+      localStorage.setItem("userApartment", data.user?.apto || data.user?.apartamento || data.apto || data.apartamento || "")
+      if (data.user?.telefone || data.telefone) {
+        localStorage.setItem("userPhone", String(data.user?.telefone || data.telefone))
+      }
+      // persiste email do usuário para futuras leituras (ex.: /inicio buscar nome no DB)
+      if (loginEmail) localStorage.setItem("userEmail", String(loginEmail).trim().toLowerCase())
+      // redireciona conforme papel: usa redirect da API (preferencial), senão morador => /inicio
+      const role = String(data?.tipo || data?.user?.tipo || '').toLowerCase()
+      const destination = data?.redirect || (role === 'admin' ? '/historico' : '/inicio')
+      window.location.href = destination
     } catch {
       setLoginErr("Falha no login")
     }
@@ -137,11 +146,13 @@ export default function HomePage() {
         localStorage.removeItem("userName")
         localStorage.removeItem("userBlock")
         localStorage.removeItem("userApartment")
-        const userType = created?.tipo || "morador"
-        localStorage.setItem("userType", String(userType))
+  const userType = created?.tipo || "morador"
+  localStorage.setItem("userType", String(userType))
         localStorage.setItem("userName", String(displayName))
         localStorage.setItem("userBlock", String(created?.block ?? formData.block ?? ""))
         localStorage.setItem("userApartment", String(created?.apartment ?? formData.apartment ?? ""))
+  if (formData.phone) localStorage.setItem("userPhone", String(formData.phone))
+  if (formData.email) localStorage.setItem("userEmail", String(formData.email).trim().toLowerCase())
       } catch (e) {
         /* ignore if storage not available */
       }
@@ -214,8 +225,8 @@ export default function HomePage() {
       setCaResetMsg("Busque o usuário pelo e-mail antes de redefinir a senha.")
       return
     }
-    if (caCodigo !== "1234") {
-      setCaResetMsg("❌ Código de confirmação inválido.")
+    if (!caCodigo || String(caCodigo).trim().length === 0) {
+      setCaResetMsg("Informe o código de confirmação.")
       return
     }
     if (!caNovaSenha) {
@@ -227,7 +238,7 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: caEmail, senha: caNovaSenha, codigo: caCodigo }),
+        body: JSON.stringify({ email: caEmail, senha: caNovaSenha, codigo: String(caCodigo).trim() }),
       })
       const j = await res.json().catch(() => null)
       if (!res.ok) throw new Error(j?.error || "Erro ao redefinir senha")
@@ -266,8 +277,20 @@ export default function HomePage() {
     <>
       <div className="container">
         <div className="header">
+          <div className="brand-badge" aria-hidden="true">
+            <Building2 className="brand-icon" />
+          </div>
           <h1>FatePack</h1>
-          <p>Sistema de gerenciamento de encomendas para condomínios</p>
+          <p>
+            Sistema de Gestão de Encomendas
+            <br />
+            <br />
+            Condomínio Abaeté
+            <br />
+            Rua Eduardo Lima, 4000 Vila Esperança
+            <br />
+            Campinas - SP
+          </p>
         </div>
 
         <div className="card">
@@ -534,6 +557,109 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* estilos visuais da página de login - apenas layout/estética */}
+      <style jsx>{`
+        .container {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          padding: 24px 16px;
+          background: radial-gradient(120% 140% at 0% 0%, rgba(14,165,233,0.55) 0%, rgba(14,165,233,0.15) 35%, rgba(30,58,138,0.15) 60%) ,
+                      linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 45%, #0ea5e9 100%);
+        }
+        .header {
+          width: 100%;
+          max-width: 420px;
+          text-align: center;
+          color: #eaf2ff;
+        }
+        .brand-badge {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          margin: 0 auto 10px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 100%),
+                      linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+          box-shadow: 0 8px 28px rgba(2,6,23,0.25), inset 0 1px 0 rgba(255,255,255,0.25);
+          border: 1px solid rgba(255,255,255,0.25);
+        }
+        .brand-icon { width: 28px; height: 28px; color: #ffffff; }
+        .header h1 {
+          margin: 0 0 6px 0;
+          font-weight: 800;
+          letter-spacing: -0.3px;
+          text-shadow: 0 2px 12px rgba(2,6,23,0.25);
+          color: #e2e8f0; /* cinza frio que combina com azul */
+          font-size: 2.25rem; /* maior que o padrão */
+          /* força desabilitar o gradiente global e usa a cor acima */
+          -webkit-text-fill-color: #e2e8f0 !important;
+          background: none !important;
+          -webkit-background-clip: initial !important;
+          background-clip: initial !important;
+        }
+        @media (min-width: 480px) {
+          .header h1 { font-size: 2.5rem; }
+        }
+        .header p {
+          margin: 0;
+          color: #dbeafe;
+          text-align: center;
+          line-height: 1.35;
+        }
+        .card {
+          width: 100%;
+          max-width: 420px;
+          background: #ffffff;
+          border-radius: 16px;
+          padding: 22px 18px 20px;
+          box-shadow: 0 12px 45px rgba(2,6,23,0.22), 0 2px 8px rgba(2,6,23,0.08);
+          border: 1px solid rgba(2,6,23,0.06);
+        }
+        /* inputs mais elegantes */
+        .card input[type="text"],
+        .card input[type="email"],
+        .card input[type="password"],
+        .card .form-input {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .card input:focus,
+        .card .form-input:focus {
+          outline: none;
+          border-color: #0ea5e9;
+          box-shadow: 0 0 0 3px rgba(14,165,233,.2);
+          background: #ffffff;
+        }
+        .forgot-password:hover { text-decoration: underline; }
+
+        /* botão primário com gradiente azul */
+        .btn.btn-primary {
+          background-image: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%);
+          color: #ffffff !important;
+          border: none !important;
+          box-shadow: 0 6px 18px rgba(37,99,235,0.28);
+          transition: transform .06s ease, box-shadow .2s ease, filter .2s ease;
+        }
+        .btn.btn-primary:hover { filter: brightness(1.03); box-shadow: 0 10px 24px rgba(37,99,235,0.34); }
+        .btn.btn-primary:active { transform: translateY(1px); box-shadow: 0 6px 18px rgba(37,99,235,0.28); }
+
+        /* segmento Login/Criar conta - apenas estética */
+        .card > div[style*="display: flex"][style*="overflow: hidden"] {
+          background: rgba(255,255,255,0.8);
+          border: 1px solid rgba(2,6,23,0.06) !important;
+        }
+        .card > div[style*="display: flex"][style*="overflow: hidden"] .btn {
+          backdrop-filter: saturate(130%) blur(1px);
+        }
+      `}</style>
 
       {/* força labels acima dos inputs na seção "Criar conta" */}
       <style jsx>{`

@@ -3,6 +3,7 @@
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { History, LogOut } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import { useRouter } from "next/navigation"
 
@@ -27,6 +28,7 @@ const capFirst = (s: string) => {
 
 export default function RegistrarPage() {
   const router = useRouter()
+  const isJWT = (t: string) => typeof t === "string" && t.split(".").length === 3
   const logout = () => {
     try {
       localStorage.removeItem("userType")
@@ -63,75 +65,16 @@ export default function RegistrarPage() {
     const user = JSON.parse(localStorage.getItem("currentUser") || "{}")
     setCurrentUser(user)
     setIsAdmin(localStorage.getItem("userType") === "admin")
+    // garante que o token seja JWT (apos atualização da API)
+    const t = localStorage.getItem("token") || ""
+    if (!isJWT(t)) {
+      try { localStorage.removeItem("token") } catch {}
+      // força novo login
+      router.replace("/")
+    }
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // exige usuário logado para usar como "recebido por"
-    const nomeRecebedor = (currentUser && (currentUser.name || currentUser.nome)) || localStorage.getItem("userName") || ""
-    if (!nomeRecebedor) {
-      alert("Usuário não autenticado. Faça login para registrar uma encomenda.")
-      return
-    }
-    if (!bloco || !apartamento || !morador || !empresa) {
-      alert("Por favor, preencha todos os campos")
-      return
-    }
-
-    const nomeRecebedorNorm = capFirst(String(nomeRecebedor).trim())
-    const empresaNorm = capFirst(empresa.trim())
-    const moradorNorm = capFirst(morador.trim())
-
-    let dataFmtFromApi = ""
-    try {
-      const res = await fetch("/api/encomendas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          empresa: empresaNorm,
-          bloco,
-          apartamento,
-          nome: moradorNorm,
-          recebidoPor: nomeRecebedorNorm,
-        }),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao salvar no banco")
-
-      setLastRecebidoPor(String(data?.recebido_por || nomeRecebedorNorm))
-      dataFmtFromApi = String(data?.data_recebimento_fmt || "")
-    } catch (err: any) {
-      console.error("ENCOMENDA API ERROR:", err?.message)
-      alert(err?.message || "Erro ao salvar no banco")
-      return
-    }
-
-    // lista local (mostra a mesma data que o banco retornou)
-    const novaEncomenda: Encomenda = {
-      id: Date.now().toString(),
-      bloco,
-      apartamento,
-      morador: moradorNorm,
-      empresa: empresaNorm,
-      dataRecebimento: dataFmtFromApi || new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date()),
-      status: `Recebido por ${nomeRecebedorNorm}`,
-      isNew: true,
-      recebidoPor: nomeRecebedorNorm,
-    }
-
-    const encomendas = JSON.parse(localStorage.getItem("encomendas") || "[]")
-    encomendas.unshift(novaEncomenda)
-    localStorage.setItem("encomendas", JSON.stringify(encomendas))
-
-    setShowAlert(true)
-    setBloco("")
-    setApartamento("")
-    setMorador("")
-    setEmpresa("")
-    setEmpresaIsOutro(false)
-    setTimeout(() => setShowAlert(false), 3500)
-  }
+  // (removido handleSubmit antigo para evitar confusão; usamos apenas handleRegistrar abaixo)
 
   const backLinkRef = useRef<HTMLAnchorElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
@@ -165,32 +108,53 @@ export default function RegistrarPage() {
 
   async function handleRegistrar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const token = localStorage.getItem("token") || ""
     const fd = new FormData(e.currentTarget)
 
-    const empresa_entrega = String(fd.get("empresa_entrega") ?? fd.get("empresa") ?? "").trim()
+    // Se selecionar "Outra empresa", usamos o valor digitado no input controlado (estado `empresa`)
+    const selectedEmpresa = String(fd.get("empresa_entrega") ?? fd.get("empresa") ?? "").trim()
+    const empresa_entrega = String(empresaIsOutro ? empresa : selectedEmpresa).trim()
     const bloco = normalize2(String(fd.get("bloco") ?? ""))
     const apartamento = normalize2(String(fd.get("apartamento") ?? fd.get("apto") ?? ""))
-    const nome = String(fd.get("nome") ?? fd.get("destinatario") ?? "").trim()
+  const nome = String(fd.get("nome") ?? fd.get("destinatario") ?? "").trim()
     const recebido_por = String(localStorage.getItem("userName") || "").trim()
 
-    if (!empresa_entrega || !bloco || !apartamento || !nome) {
-      alert("Preencha Empresa, Bloco, Apartamento e Destinatário.")
+    if (!empresa_entrega || !bloco || !apartamento) {
+      alert("Preencha Empresa, Bloco e Apartamento.")
       return
     }
 
+    const token = localStorage.getItem("token") || ""
     const res = await fetch("/api/encomendas", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: isJWT(token) ? `Bearer ${token}` : "",
       },
       body: JSON.stringify({ empresa_entrega, bloco, apartamento, nome, recebido_por }),
     })
 
     const data = await res.json().catch(() => null)
+    if (res.status === 401) {
+      const reason = String(data?.reason || "").toUpperCase()
+      if (reason === "ROLE_NOT_ALLOWED") {
+        alert("Seu usuário não tem permissão para registrar encomendas. Entre como administrador/porteiro/síndico.")
+      } else {
+        alert("Sessão inválida ou expirada. Faça login novamente.")
+      }
+      try { localStorage.removeItem("token") } catch {}
+      router.replace("/")
+      return
+    }
     if (!res.ok) {
-      alert(data?.error || "Falha ao registrar")
+      if (data?.error === "AMBIGUOUS_APARTMENT" && Array.isArray(data?.residents)) {
+        alert(`Apto com múltiplos moradores. Informe o destinatário exato.\nOpções: ${data.residents.join(", ")}`)
+      } else if (data?.error === "NO_USER_FOR_APARTMENT") {
+        alert("Não há morador vinculado a este apartamento. Cadastre o morador primeiro.")
+      } else if (data?.error === "APARTAMENTO_NOT_FOUND") {
+        alert("Apartamento não encontrado. Verifique bloco e número (use 2 dígitos: 01, 02, ...).")
+      } else {
+        alert(data?.error || "Falha ao registrar")
+      }
       return
     }
 
@@ -275,15 +239,14 @@ export default function RegistrarPage() {
 
               {/* Nome do Morador */}
               <div className="form-group">
-                <label className="form-label">Destinatário</label>
+                <label className="form-label">Destinatário (opcional)</label>
                 <input
                   name="nome"
                   type="text"
                   className="form-input"
                   value={morador}
-                  onChange={(e) => setMorador(capFirst(e.target.value))} // <- aplica capitalização
-                  placeholder="Ex.: Maria Silva"
-                  required
+                  onChange={(e) => setMorador(capFirst(e.target.value))}
+                  placeholder="Ex.: Maria Silva (use para apartamentos com múltiplos moradores)"
                 />
               </div>
 
@@ -334,61 +297,68 @@ export default function RegistrarPage() {
 
               <div style={{ display: "flex", justifyContent: "center", marginTop: "0.75rem" }}>
                 <button type="submit" className="btn btn-primary">
-                  📦 Registrar Encomenda
+                  Registrar Encomenda
                 </button>
               </div>
             </form>
           </div>
         </div>
 
-        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
+        <nav
+          id="registrar-nav"
+          className="nav-menu nav-modern"
+          style={{
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: navDims.width,
+          }}
+        >
+          <Link href="/historico" className="nav-item" title="Histórico">
+            <History className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Histórico</span>
+          </Link>
+
           <button
             type="button"
             className="nav-item"
             onClick={logout}
             aria-label="Sair"
             title="Sair"
-            style={{ background: "transparent", border: "none", cursor: "pointer" }}
           >
-            <div className="nav-icon" aria-hidden="true">↩️</div>
-            Sair
+            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Sair</span>
           </button>
-
-          {isAdmin ? (
-            <>
-              <Link href="/registrar" className="nav-item active">
-                <div className="nav-icon">📦</div>
-                Registrar
-              </Link>
-              <Link href="/historico" className="nav-item">
-                <div className="nav-icon">📊</div>
-                Histórico
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/encomendas" className="nav-item">
-                <div className="nav-icon">📋</div>
-                Encomendas
-              </Link>
-            </>
-          )}
         </nav>
       </div>
 
       <style jsx>{`
-        .nav-menu {
-          position: fixed;ixed;
-          bottom: 0;m: 0;
-          z-index: 1000;index: 1000;
-          background: var(--card, #fff);ground: var(--card, #fff);
-          border-top: 1px solid #e5e7eb;rder-top: 1px solid #e5e7eb;
-          padding-bottom: calc(env(safe-area-inset-bottom, 0px));          padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+        /* base */
+        .nav-menu { position: fixed; bottom: 0; z-index: 1000; padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+        .container { padding-bottom: 80px; }
+
+        /* moderna com azul discreto */
+        #registrar-nav.nav-modern {
+          background: rgba(255, 255, 255, 0.75);
+          backdrop-filter: saturate(180%) blur(12px);
+          -webkit-backdrop-filter: saturate(180%) blur(12px);
+          border-top: 1px solid rgba(2, 132, 199, 0.10);
+          box-shadow: 0 -6px 24px rgba(2, 132, 199, 0.12);
         }
-        /* reserva espaço para o nav fixo */espaço para o nav fixo */
-        .container {
-          padding-bottom: 80px;ttom: 80px;
+        #registrar-nav .nav-item {
+          display: inline-flex; align-items: center; justify-content: center;
+          gap: 8px; padding: 10px 14px; margin: 6px 8px; border-radius: 12px;
+          color: var(--muted-foreground);
+          transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }
+        #registrar-nav .nav-item:hover { background: rgba(59, 130, 246, 0.10); color: var(--foreground); }
+        #registrar-nav .nav-item:active { transform: translateY(1px); }
+        #registrar-nav .nav-item.active {
+          background: linear-gradient(180deg, rgba(14, 165, 233, 0.20), rgba(59, 130, 246, 0.18));
+          color: var(--foreground);
+          border: 1px solid rgba(59, 130, 246, 0.30);
+        }
+        #registrar-nav .nav-icon-svg { width: 18px; height: 18px; }
+        #registrar-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
       `}</style>
     </>
   )

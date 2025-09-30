@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Package, LogOut } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 
 interface Encomenda {
@@ -371,7 +372,7 @@ export default function HistoricoPage() {
                   </div>
                 )}
 
-                {encomenda.isNew && !encomenda.entregue && (
+                {!encomenda.entregue && (
                   <span
                     className="badge"
                     style={{
@@ -399,54 +400,61 @@ export default function HistoricoPage() {
           )}
         </div>
 
-        <nav className="nav-menu" style={{ left: navDims.left, width: navDims.width }}>
+        <nav
+          id="historico-nav"
+          className="nav-menu nav-modern"
+          style={{
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: navDims.width,
+          }}
+        >
+          <Link href="/registrar" className="nav-item" title="Registrar">
+            <Package className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Registrar</span>
+          </Link>
+
           <button
             type="button"
             className="nav-item"
             onClick={logout}
             aria-label="Sair"
             title="Sair"
-            style={{ background: "transparent", border: "none", cursor: "pointer" }}
           >
-            <div className="nav-icon" aria-hidden="true">↩️</div>
-            Sair
+            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Sair</span>
           </button>
-
-          {isAdmin ? (
-            <>
-              <Link href="/registrar" className="nav-item">
-                <div className="nav-icon">📦</div>
-                Registrar
-              </Link>
-              <Link href="/historico" className="nav-item active">
-                <div className="nav-icon">📊</div>
-                Histórico
-              </Link>
-            </>
-          ) : (
-            <Link href="/encomendas" className="nav-item">
-              <div className="nav-icon">📋</div>
-              Encomendas
-            </Link>
-          )}
         </nav>
       </div>
 
       <style jsx>{`
-        .nav-menu {
-          position: fixed;
-          bottom: 0;               /* chumbada ao fim da viewport */
-          z-index: 1000;
-          background: var(--card, #fff);
-          border-top: 1px solid #e5e7eb;
-          padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 6px);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          box-sizing: border-box;
+        /* base */
+        .nav-menu { position: fixed; bottom: 0; z-index: 1000; padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+        .container { padding-bottom: 80px; }
+
+        /* moderna com azul discreto */
+        #historico-nav.nav-modern {
+          background: rgba(255, 255, 255, 0.75);
+          backdrop-filter: saturate(180%) blur(12px);
+          -webkit-backdrop-filter: saturate(180%) blur(12px);
+          border-top: 1px solid rgba(2, 132, 199, 0.10);
+          box-shadow: 0 -6px 24px rgba(2, 132, 199, 0.12);
         }
-        /* reserva espaço para o nav fixo (igual ao /registrar) */
-        .container { padding-bottom: 96px; }
+        #historico-nav .nav-item {
+          display: inline-flex; align-items: center; justify-content: center;
+          gap: 8px; padding: 10px 14px; margin: 6px 8px; border-radius: 12px;
+          color: var(--muted-foreground);
+          transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+        }
+        #historico-nav .nav-item:hover { background: rgba(59, 130, 246, 0.10); color: var(--foreground); }
+        #historico-nav .nav-item:active { transform: translateY(1px); }
+        #historico-nav .nav-item.active {
+          background: linear-gradient(180deg, rgba(14, 165, 233, 0.20), rgba(59, 130, 246, 0.18));
+          color: var(--foreground);
+          border: 1px solid rgba(59, 130, 246, 0.30);
+        }
+        #historico-nav .nav-icon-svg { width: 18px; height: 18px; }
+        #historico-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
       `}</style>
     </>
   )

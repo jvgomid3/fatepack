@@ -3,6 +3,8 @@ export const runtime = "nodejs"
 import "server-only"
 import { NextResponse } from "next/server"
 import { supabase } from "../../../lib/supabaseClient"
+import bcrypt from "bcryptjs"
+import { signToken } from "../../../lib/server/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -49,11 +51,17 @@ export async function POST(req: Request) {
     if (storedRaw === null || storedRaw === false || typeof storedRaw === "undefined") {
       return NextResponse.json({ error: "Credenciais inválidas", detail: "no_password_set" }, { status: 401 })
     }
-
-    const stored = String(storedRaw).trim()
-    console.log("[/api/login] compare", { stored, provided }) // debug
-
-    if (stored !== provided) {
+    const stored = String(storedRaw)
+    let match = false
+    // Se for hash bcrypt (começa com $2a/$2b/$2y), comparar via bcrypt
+    if (/^\$2[aby]\$/.test(stored)) {
+      match = await bcrypt.compare(provided, stored)
+    } else {
+      // compatibilidade com senhas legadas em texto puro
+      match = stored.trim() === provided
+    }
+    console.log("[/api/login] compare", { usedBcrypt: /^\$2[aby]\$/.test(stored), match })
+    if (!match) {
       return NextResponse.json({ error: "Credenciais inválidas", detail: "password_mismatch" }, { status: 401 })
     }
 
@@ -63,7 +71,17 @@ export async function POST(req: Request) {
     delete (safe as any).password
     delete (safe as any).pass
 
-    const token = Buffer.from(`${safe.id ?? safe.id_usuario ?? identifier}:${Date.now()}`).toString("base64")
+    // Gera JWT compatível com os endpoints protegidos (usa claims esperadas)
+    const payload = {
+      id: Number(safe.id ?? safe.id_usuario ?? 0),
+      nome: String(safe.nome ?? identifier),
+      email: String(safe.email ?? ""),
+      tipo: String(safe.tipo ?? ""),
+      bloco: String((safe as any).bloco ?? (safe as any).userBlock ?? ""),
+      apto: String((safe as any).apartamento ?? (safe as any).userApartment ?? (safe as any).apto ?? ""),
+      apartamento: String((safe as any).apartamento ?? (safe as any).userApartment ?? ""),
+    }
+    const token = signToken(payload, "8h")
 
     return NextResponse.json({
       ok: true,

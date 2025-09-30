@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import pkg from "pg"
-const { Pool } = pkg
+import { supabase } from "../../../lib/supabaseClient"
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
-})
-
-const TABLE = process.env.DB_USERS_TABLE || "usuario" // ajuste se necessário
+export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
   try {
@@ -17,28 +11,31 @@ export async function POST(req: Request) {
     const pass = String(senha || "")
     const code = String(codigo || "")
 
-    if (!emailNorm || !pass || !code) return NextResponse.json({ error: "Dados insuficientes" }, { status: 400 })
-    if (code !== "1234") return NextResponse.json({ error: "Código inválido" }, { status: 400 })
+  if (!emailNorm || !pass || !code) return NextResponse.json({ error: "Dados insuficientes" }, { status: 400 })
+  if (code !== "1234") return NextResponse.json({ error: "❌ Código inválido." }, { status: 400 })
 
     const hash = await bcrypt.hash(pass, 10)
 
-    const client = await pool.connect()
-    try {
-      const q = await client.query(
-        `UPDATE ${TABLE}
-            SET senha_hash = $1
-          WHERE lower(email) = $2
-          RETURNING id_usuario, nome, email`,
-        [hash, emailNorm]
-      )
-      const row = q.rows?.[0]
-      if (!row) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
-      return NextResponse.json({ ok: true, nome: row.nome, email: row.email })
-    } finally {
-      client.release()
+    // Atualiza no Supabase pela coluna email (case-sensitive).
+    // Emails são salvos em minúsculo no app; se necessário, converta seu dataset.
+    const { data, error } = await supabase
+      .from("usuario")
+      .update({ senha_hash: hash })
+      .eq("email", emailNorm)
+      .select("nome, email")
+      .limit(1)
+
+    if (error) {
+      console.error("/api/redefinir-senha supabase error:", error.message)
+      return NextResponse.json({ error: "DB_ERROR", detail: error.message }, { status: 500 })
     }
+    if (!data || !data.length) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+    }
+
+    return NextResponse.json({ ok: true, nome: data[0].nome, email: data[0].email })
   } catch (e: any) {
-    console.error("API /api/redefinir-senha error:", e)
+    console.error("API /api/redefinir-senha error:", e?.message || e)
     return NextResponse.json({ error: e?.message || "Erro no servidor" }, { status: 500 })
   }
 }
