@@ -6,6 +6,26 @@ import { supabaseAdmin } from "../../../lib/server/supabaseAdmin"
 
 const TABLE = "encomenda"
 
+// Gera um timestamp no fuso de São Paulo.
+// Retorna string ISO com offset "-03:00" (ex.: 2025-09-29T14:05:23-03:00)
+function nowInSaoPauloISO(): string {
+  const now = new Date()
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  })
+  const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value])) as Record<string, string>
+  // Brasil atualmente não usa horário de verão, offset fixo -03:00.
+  // Se no futuro mudar, considerar calcular offset dinamicamente.
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}-03:00`
+}
+
 export async function GET(req: Request) {
   const user = getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -164,32 +184,31 @@ export async function POST(req: Request) {
     if (erUsers) throw erUsers
 
     let destinatario = ""
-    if ((users || []).length === 1) {
+    if (nomeInput) {
+      // livre: usa o nome informado, sem exigir que seja um dos moradores
+      destinatario = nomeInput
+    } else if ((users || []).length === 1) {
+      // fallback: único morador
       destinatario = String(users![0].nome || "")
     } else {
-      if (nomeInput) {
-        const match = (users || []).find((r: any) => String(r?.nome || "").toLowerCase() === nomeInput.toLowerCase())
-        if (match) destinatario = String(match.nome)
-      }
-      if (!destinatario) {
-        return NextResponse.json(
-          {
-            error: "AMBIGUOUS_APARTMENT",
-            bloco,
-            apartamento,
-            residents: (users || []).map((r: any) => r?.nome).filter(Boolean),
-          },
-          { status: 400 }
-        )
-      }
+      // múltiplos moradores e nenhum nome fornecido -> peça para especificar
+      return NextResponse.json(
+        {
+          error: "AMBIGUOUS_APARTMENT",
+          bloco,
+          apartamento,
+          residents: (users || []).map((r: any) => r?.nome).filter(Boolean),
+        },
+        { status: 400 }
+      )
     }
 
     const { data: inserted, error: ei } = await supabaseAdmin
       .from(TABLE)
       .insert({
         empresa_entrega: empresa,
-        // Ajuste de fuso: Supabase usa UTC; você pode armazenar sem offset e formatar na leitura
-        data_recebimento: new Date().toISOString(),
+        // Armazena no horário de São Paulo (com offset -03:00) para evitar adiantar 3h
+        data_recebimento: nowInSaoPauloISO(),
         id_apartamento: idApto,
         bloco,
         apartamento,

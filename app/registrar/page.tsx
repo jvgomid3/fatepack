@@ -197,7 +197,9 @@ export default function RegistrarPage() {
 
           {showAlert && (
             <div className="alert success">
-              ✅ Encomenda registrada com sucesso! O morador será notificado.
+              ✅ Encomenda registrada com sucesso!
+              <br />
+              O morador será notificado.
               <br />
               <small>Recebido por {lastRecebidoPor}</small>
             </div>
@@ -246,7 +248,7 @@ export default function RegistrarPage() {
                   className="form-input"
                   value={morador}
                   onChange={(e) => setMorador(capFirst(e.target.value))}
-                  placeholder="Ex.: Maria Silva (use para apartamentos com múltiplos moradores)"
+                  placeholder="Ex.: Maria Silva"
                 />
               </div>
 

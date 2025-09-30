@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
-import { Home, LogOut } from "lucide-react"
+import { Home, LogOut, Clock } from "lucide-react"
 
 interface Encomenda {
   id: string
@@ -88,9 +88,11 @@ export default function EncomendasPage() {
                   morador: r.morador ?? r.nome ?? "",
                   empresa: r.empresa_entrega ?? r.empresa ?? "",
                   dataRecebimento: r.data_recebimento ?? r.dataRecebimento ?? "",
-                  status: r.status ?? "Recebida",
+                  status: r.status ?? "",
+                  recebidoPor: r.recebido_por ?? r.recebidoPor ?? "",
                   retiradoPor: r.retirado_por ?? r.nome_retirou ?? r.retiradoPor,
                   dataRetirada: r.data_retirada ?? r.dataRetirada,
+                  entregue: Boolean(r.retirado_por || r.data_retirada),
                 }))
               : []
             setEncomendas(items)
@@ -364,21 +366,25 @@ function PackageCard({
             <span className="value">{formatDateTimeBR(encomenda.dataRecebimento)}</span>
           </div>
 
-          {/* mostrar retirada quando existir algum dos campos */}
-          {(encomenda.retiradoPor || encomenda.dataRetirada) && (
-            <>
-              <div className="field">
-                <strong className="label">Retirado por:</strong>{" "}
-                <span className="value">{encomenda.retiradoPor || "-"}</span>
-              </div>
-              <div className="field">
-                <strong className="label">Retirado às:</strong>{" "}
-                <span className="value">{formatDateTimeBR(encomenda.dataRetirada)}</span>
-              </div>
-            </>
-          )}
+          {/* Recebido por (mostrar antes de Retirado por) */}
+          <div className="field" style={{ marginTop: 8 }}>
+            <strong className="label">Recebido por:</strong>{" "}
+            <span className="value">{encomenda.recebidoPor || "-"}</span>
+          </div>
 
-          <p className="status">{encomenda.status}</p>
+          {/* Sempre mostrar seção de retirada: pendente ou preenchida */}
+          <div className="field" style={{ marginTop: 6 }}>
+            <strong className="label">Retirado por:</strong>{" "}
+            <span className="value">
+              {encomenda.entregue ? (encomenda.retiradoPor || "-") : ""}
+            </span>
+          </div>
+          {encomenda.entregue && (
+            <div className="field">
+              <strong className="label">Retirado às:</strong>{" "}
+              <span className="value">{formatDateTimeBR(encomenda.dataRetirada)}</span>
+            </div>
+          )}
 
           {encomenda.entregue && (
             <div
@@ -403,6 +409,9 @@ function PackageCard({
           )}
         </div>
         {isNew && <span className="badge new">NOVA</span>}
+        {!encomenda.entregue && (
+          <span className="badge" title="Pendente" style={{ backgroundColor: "#f59e0b", color: "#111827" }}>PENDENTE</span>
+        )}
       </div>
 
       <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
