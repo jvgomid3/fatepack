@@ -419,9 +419,11 @@ html, body { height: 100%; overflow-x: hidden; }
 
 .nav-item {
   display: inline-flex;
-  gap: 8px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  gap: 4px;
   padding: 8px 12px;
   height: 55px;
   border-radius: 8px;
@@ -438,6 +440,13 @@ html, body { height: 100%; overflow-x: hidden; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* label sob o ícone no nav */
+.nav-label {
+  display: block;
+  margin-top: 2px;
+  line-height: 1.1;
 }
 
 @media (max-width: 420px) {

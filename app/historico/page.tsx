@@ -72,7 +72,9 @@ export default function HistoricoPage() {
   const [showInputId, setShowInputId] = useState<string | null>(null)
   const [nomeRetirada, setNomeRetirada] = useState("")
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAdmEmail, setIsAdmEmail] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [onlyPending, setOnlyPending] = useState(false)
   const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
   const [confirmLoadingId, setConfirmLoadingId] = useState<string | null>(null) // novo
   const backLinkRef = useRef<HTMLAnchorElement | null>(null) // novo
@@ -91,6 +93,11 @@ export default function HistoricoPage() {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
     }
+    // define se o e-mail logado é exatamente "adm"
+    const email = String(localStorage.getItem("userEmail") || localStorage.getItem("email") || "")
+      .trim()
+      .toLowerCase()
+    setIsAdmEmail(email === "adm")
   }, [])
 
   useEffect(() => {
@@ -160,6 +167,9 @@ export default function HistoricoPage() {
     setFiltroApto("")
   }
 
+  // lista final considerando o filtro de pendentes
+  const listaFiltrada = onlyPending ? encomendas.filter((e) => !e.entregue) : encomendas
+
   return (
     <>
       <AdminGate />
@@ -178,8 +188,8 @@ export default function HistoricoPage() {
           </div>
 
           {/* Filtros */}
-          <div className="card" style={{ marginBottom: "1rem" }}>
-            <div className="form-grid" style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
+          <div id="historico-filtros" className="card" style={{ marginBottom: "1rem" }}>
+            <div className="form-grid" style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
               {/* Bloco */}
               <div className="form-group">
                 <label className="form-label">Bloco</label>
@@ -247,16 +257,28 @@ export default function HistoricoPage() {
             <div style={{ marginTop: "0.5rem" }}>
               <button className="btn btn-outline" onClick={limparFiltros}>Limpar filtros</button>
             </div>
+
+            {/* Filtro de pendentes (abaixo do botão Limpar filtros) */}
+            <div style={{ marginTop: "0.5rem" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                <input
+                  type="checkbox"
+                  checked={onlyPending}
+                  onChange={(e) => setOnlyPending(e.target.checked)}
+                />
+                Pendentes
+              </label>
+            </div>
           </div>
 
-          {/* Contagem com base no resultado do banco */}
+          {/* Contagem considerando o filtro de pendentes */}
           <div style={{ marginBottom: "1rem", color: "var(--muted-foreground)", textAlign: "center" }}>
-            <strong>{encomendas.length}</strong> encomenda(s) encontrada(s)
+            <strong>{listaFiltrada.length}</strong> encomenda(s) encontrada(s)
           </div>
 
-          {/* Lista usa diretamente encomendas (sem encomendasFiltradas) */}
-          {encomendas.length > 0 ? (
-            encomendas.map((encomenda) => (
+          {/* Lista usa encomendas ou somente pendentes conforme o checkbox */}
+          {listaFiltrada.length > 0 ? (
+            listaFiltrada.map((encomenda) => (
               <div key={encomenda.id} className={`package-card ${encomenda.entregue ? "success" : ""}`}>
                 <h3>{encomenda.morador}</h3>
                 <p>
@@ -392,7 +414,7 @@ export default function HistoricoPage() {
             <div className="empty-state">
               <h3>📊 Nenhuma encomenda encontrada</h3>
               <p>
-                {filtroEmpresa || filtroMes || filtroBloco || filtroApto
+                {onlyPending || filtroEmpresa || filtroMes || filtroBloco || filtroApto
                   ? "Tente ajustar os filtros para encontrar encomendas"
                   : "Não há encomendas registradas no histórico"}
               </p>
@@ -414,10 +436,12 @@ export default function HistoricoPage() {
             <span className="nav-label">Registrar</span>
           </Link>
 
-          <Link href="/moradores" className="nav-item" title="Moradores">
-            <UserRound className="nav-icon-svg" aria-hidden="true" />
-            <span className="nav-label">Moradores</span>
-          </Link>
+          {isAdmEmail && (
+            <Link href="/moradores" className="nav-item" title="Moradores">
+              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Moradores</span>
+            </Link>
+          )}
 
           <Link href="/aviso" className="nav-item" title="Aviso">
             <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
@@ -465,6 +489,10 @@ export default function HistoricoPage() {
         }
         #historico-nav .nav-icon-svg { width: 18px; height: 18px; }
         #historico-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
+
+        /* Espaçamento mais justo entre filtros no Histórico */
+        #historico-filtros .form-group { margin-bottom: 4px; }
+        #historico-filtros .form-label { margin-bottom: 2px; display: inline-block; }
       `}</style>
     </>
   )

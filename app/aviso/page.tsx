@@ -24,6 +24,7 @@ export default function AvisoPage() {
   }
 
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAdmEmail, setIsAdmEmail] = useState(false)
   const [expiraEm, setExpiraEm] = useState<string>("")
   const displayName =
     (currentUser && (currentUser.name || currentUser.nome)) ||
@@ -33,6 +34,10 @@ export default function AvisoPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("currentUser") || "{}")
     setCurrentUser(user)
+    const email = String(localStorage.getItem("userEmail") || localStorage.getItem("email") || "")
+      .trim()
+      .toLowerCase()
+    setIsAdmEmail(email === "adm")
   }, [])
 
   const backLinkRef = useRef<HTMLAnchorElement | null>(null)
@@ -129,10 +134,12 @@ export default function AvisoPage() {
             <span className="nav-label">Histórico</span>
           </Link>
 
-          <Link href="/moradores" className="nav-item" title="Moradores">
-            <UserRound className="nav-icon-svg" aria-hidden="true" />
-            <span className="nav-label">Moradores</span>
-          </Link>
+          {isAdmEmail && (
+            <Link href="/moradores" className="nav-item" title="Moradores">
+              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Moradores</span>
+            </Link>
+          )}
 
           <button
             type="button"

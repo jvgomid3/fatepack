@@ -293,25 +293,45 @@ export default function InicioPage() {
                 : "min(720px, calc(100% - 32px))",
             }}
           >
-            <Link href="/inicio" className="nav-item" title="Perfil">
-              <UserRound className="nav-icon-svg" aria-hidden="true" />
-              <span className="nav-label">Perfil</span>
-            </Link>
-            <Link href="/encomendas" className="nav-item" title="Encomendas">
-              <Package className="nav-icon-svg" aria-hidden="true" />
-              <span className="nav-label">Encomendas</span>
-            </Link>
-
-            <button
-              type="button"
-              className="nav-item"
-              onClick={logout}
-              aria-label="Sair"
-              title="Sair"
-            >
-              <LogOut className="nav-icon-svg" aria-hidden="true" />
-              <span className="nav-label">Sair</span>
-            </button>
+            {userType !== "admin" ? (
+              <>
+                <Link href="/encomendas" className="nav-item" title="Encomendas">
+                  <Package className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-label">Encomendas</span>
+                </Link>
+                <button
+                  type="button"
+                  className="nav-item"
+                  onClick={logout}
+                  aria-label="Sair"
+                  title="Sair"
+                >
+                  <LogOut className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-label">Sair</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/inicio" className="nav-item" title="Perfil">
+                  <UserRound className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-label">Perfil</span>
+                </Link>
+                <Link href="/encomendas" className="nav-item" title="Encomendas">
+                  <Package className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-label">Encomendas</span>
+                </Link>
+                <button
+                  type="button"
+                  className="nav-item"
+                  onClick={logout}
+                  aria-label="Sair"
+                  title="Sair"
+                >
+                  <LogOut className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-label">Sair</span>
+                </button>
+              </>
+            )}
           </nav>
         )}
        </div>

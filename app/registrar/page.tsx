@@ -49,6 +49,7 @@ export default function RegistrarPage() {
   const [empresaIsOutro, setEmpresaIsOutro] = useState(false) // novo
   const [showAlert, setShowAlert] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAdmEmail, setIsAdmEmail] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   // nome a mostrar na saudação (prefere currentUser, depois localStorage)
   const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
@@ -72,6 +73,11 @@ export default function RegistrarPage() {
       // força novo login
       router.replace("/")
     }
+    // define se o e-mail logado é exatamente "adm"
+    const email = String(localStorage.getItem("userEmail") || localStorage.getItem("email") || "")
+      .trim()
+      .toLowerCase()
+    setIsAdmEmail(email === "adm")
   }, [])
 
   // (removido handleSubmit antigo para evitar confusão; usamos apenas handleRegistrar abaixo)
@@ -320,10 +326,12 @@ export default function RegistrarPage() {
             <span className="nav-label">Histórico</span>
           </Link>
 
-          <Link href="/moradores" className="nav-item" title="Moradores">
-            <UserRound className="nav-icon-svg" aria-hidden="true" />
-            <span className="nav-label">Moradores</span>
-          </Link>
+          {isAdmEmail && (
+            <Link href="/moradores" className="nav-item" title="Moradores">
+              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Moradores</span>
+            </Link>
+          )}
 
           <Link href="/aviso" className="nav-item" title="Aviso">
             <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
