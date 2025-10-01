@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState, useRef, useMemo } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
-import { Home, LogOut, Clock } from "lucide-react"
+import { UserRound, LogOut } from "lucide-react"
 
 interface Encomenda {
   id: string
@@ -341,9 +341,9 @@ export default function EncomendasPage() {
           }}
         >
           {!isAdmin && (
-            <Link href="/inicio" className="nav-item" title="Início">
-              <Home className="nav-icon-svg" aria-hidden="true" />
-              <span className="nav-label">Início</span>
+            <Link href="/inicio" className="nav-item" title="Perfil">
+              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Perfil</span>
             </Link>
           )}
 

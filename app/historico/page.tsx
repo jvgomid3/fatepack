@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Package, LogOut, AlertTriangle } from "lucide-react"
+import { Package, LogOut, AlertTriangle, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 
 interface Encomenda {
@@ -412,6 +412,11 @@ export default function HistoricoPage() {
           <Link href="/registrar" className="nav-item" title="Registrar">
             <Package className="nav-icon-svg" aria-hidden="true" />
             <span className="nav-label">Registrar</span>
+          </Link>
+
+          <Link href="/moradores" className="nav-item" title="Moradores">
+            <UserRound className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Moradores</span>
           </Link>
 
           <Link href="/aviso" className="nav-item" title="Aviso">

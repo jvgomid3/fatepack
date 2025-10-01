@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { History, LogOut, AlertTriangle } from "lucide-react"
+import { History, LogOut, AlertTriangle, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import { useRouter } from "next/navigation"
 
@@ -318,6 +318,11 @@ export default function RegistrarPage() {
           <Link href="/historico" className="nav-item" title="Histórico">
             <History className="nav-icon-svg" aria-hidden="true" />
             <span className="nav-label">Histórico</span>
+          </Link>
+
+          <Link href="/moradores" className="nav-item" title="Moradores">
+            <UserRound className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Moradores</span>
           </Link>
 
           <Link href="/aviso" className="nav-item" title="Aviso">

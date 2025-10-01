@@ -293,6 +293,10 @@ export default function InicioPage() {
                 : "min(720px, calc(100% - 32px))",
             }}
           >
+            <Link href="/inicio" className="nav-item" title="Perfil">
+              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-label">Perfil</span>
+            </Link>
             <Link href="/encomendas" className="nav-item" title="Encomendas">
               <Package className="nav-icon-svg" aria-hidden="true" />
               <span className="nav-label">Encomendas</span>
