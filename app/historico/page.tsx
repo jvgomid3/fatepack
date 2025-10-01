@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Package, LogOut } from "lucide-react"
+import { Package, LogOut, AlertTriangle } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 
 interface Encomenda {
@@ -59,7 +59,7 @@ export default function HistoricoPage() {
       localStorage.removeItem("user")
     } catch { }
     router.replace("/")
-    setTimeout(() => window.location.replace("/"), 100)
+  // removido reload para evitar flash de layout antigo
   }
 
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
@@ -412,6 +412,11 @@ export default function HistoricoPage() {
           <Link href="/registrar" className="nav-item" title="Registrar">
             <Package className="nav-icon-svg" aria-hidden="true" />
             <span className="nav-label">Registrar</span>
+          </Link>
+
+          <Link href="/aviso" className="nav-item" title="Aviso">
+            <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Aviso</span>
           </Link>
 
           <button

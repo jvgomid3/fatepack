@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { History, LogOut } from "lucide-react"
+import { History, LogOut, AlertTriangle } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import { useRouter } from "next/navigation"
 
@@ -39,7 +39,7 @@ export default function RegistrarPage() {
       localStorage.removeItem("user")
     } catch {}
     router.replace("/")
-    setTimeout(() => window.location.replace("/"), 100)
+  // removido reload para evitar flash de layout antigo
   }
 
   const [bloco, setBloco] = useState("")
@@ -241,7 +241,7 @@ export default function RegistrarPage() {
 
               {/* Nome do Morador */}
               <div className="form-group">
-                <label className="form-label">Destinatário (opcional)</label>
+                <label className="form-label">Destinatário</label>
                 <input
                   name="nome"
                   type="text"
@@ -318,6 +318,11 @@ export default function RegistrarPage() {
           <Link href="/historico" className="nav-item" title="Histórico">
             <History className="nav-icon-svg" aria-hidden="true" />
             <span className="nav-label">Histórico</span>
+          </Link>
+
+          <Link href="/aviso" className="nav-item" title="Aviso">
+            <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-label">Aviso</span>
           </Link>
 
           <button

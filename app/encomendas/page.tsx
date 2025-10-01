@@ -1,6 +1,6 @@
 "use client"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 import { Home, LogOut, Clock } from "lucide-react"
@@ -27,11 +27,33 @@ const capFirst = (s: string) => {
   return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
+function formatMonthLabel(key: string) {
+  const [yyyy, mm] = key.split("-")
+  const monthIndex = Math.max(1, Math.min(12, parseInt(mm, 10))) - 1
+  const monthNames = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ]
+  const name = monthNames[monthIndex] || mm
+  return `${name}/${yyyy}`
+}
+
 export default function EncomendasPage() {
   const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
-  const [apartamentoFiltro, setApartamentoFiltro] = useState("")
+  const [mesFiltro, setMesFiltro] = useState("")
+  const [onlyPending, setOnlyPending] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [myBlock, setMyBlock] = useState<string | null>(null)
   const [myApt, setMyApt] = useState<string | null>(null)
@@ -157,10 +179,45 @@ export default function EncomendasPage() {
         return okBloco && okApt
       })
 
-  // Filtro adicional por input (opcional)
-  const encomendasFiltradas = apartamentoFiltro
-    ? base.filter((enc) => enc.apartamento === apartamentoFiltro)
+  // Helper para obter chave AAAA-MM a partir da data (aceita ISO ou BR dd/mm/aaaa)
+  const monthKeyFromDate = (value?: string) => {
+    if (!value) return ""
+    const s = String(value)
+    let d = new Date(s)
+    if (isNaN(d.getTime())) {
+      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+      if (m) {
+        const dd = parseInt(m[1], 10)
+        const mm = parseInt(m[2], 10) - 1
+        const yyyy = parseInt(m[3], 10)
+        d = new Date(yyyy, mm, dd)
+      }
+    }
+    if (isNaN(d.getTime())) return ""
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    return `${yyyy}-${mm}`
+  }
+
+  // Lista de meses disponíveis com base no conjunto base
+  const mesesDisponiveis = useMemo(() => {
+    const keys = new Set<string>()
+    base.forEach((enc) => {
+      const k = monthKeyFromDate(enc.dataRecebimento)
+      if (k) keys.add(k)
+    })
+    return Array.from(keys).sort((a, b) => b.localeCompare(a))
+  }, [encomendas, isAdmin, myBlock, myApt])
+
+  // Filtro adicional por mês/ano
+  const encomendasFiltradasPorMes = mesFiltro
+    ? base.filter((enc) => monthKeyFromDate(enc.dataRecebimento) === mesFiltro)
     : base
+
+  // Filtro por pendentes (não entregues)
+  const encomendasFiltradas = onlyPending
+    ? encomendasFiltradasPorMes.filter((enc) => !enc.entregue)
+    : encomendasFiltradasPorMes
 
   const encomendasNovas = encomendasFiltradas.filter((enc) => enc.isNew)
   const encomendasVistas = encomendasFiltradas.filter((enc) => !enc.isNew)
@@ -177,7 +234,7 @@ export default function EncomendasPage() {
       localStorage.removeItem("user")
     } catch {}
     router.replace("/")
-    setTimeout(() => window.location.replace("/"), 100)
+  // removido reload para evitar flash de layout antigo
   }
 
   return (
@@ -198,14 +255,27 @@ export default function EncomendasPage() {
 
           <div className="card">
             <div className="form-group">
-              <label className="form-label">Filtrar por Apartamento</label>
-              <input
-                type="text"
-                className="form-input"
-                value={apartamentoFiltro}
-                onChange={(e) => setApartamentoFiltro(e.target.value)}
-                placeholder="Digite o número do apartamento (ex: 101)"
-              />
+              <label className="form-label">Filtrar por Mês</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <select
+                  className="form-input"
+                  value={mesFiltro}
+                  onChange={(e) => setMesFiltro(e.target.value)}
+                >
+                  <option value="">Todos os meses</option>
+                  {mesesDisponiveis.map((key) => (
+                    <option key={key} value={key}>{formatMonthLabel(key)}</option>
+                  ))}
+                </select>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={onlyPending}
+                    onChange={(e) => setOnlyPending(e.target.checked)}
+                  />
+                  Pendentes
+                </label>
+              </div>
             </div>
           </div>
 
@@ -253,8 +323,8 @@ export default function EncomendasPage() {
             <div className="empty-state">
               <h3>📭 Nenhuma encomenda encontrada</h3>
               <p>
-                {apartamentoFiltro
-                  ? `Não há encomendas para o apartamento ${apartamentoFiltro}`
+                {mesFiltro
+                  ? `Não há encomendas em ${formatMonthLabel(mesFiltro)}`
                   : "Não há encomendas registradas no momento"}
               </p>
             </div>
@@ -353,7 +423,7 @@ function PackageCard({
     <div className={`package-card ${isNew ? "new" : ""}`}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
-          <h3>{encomenda.morador}</h3>
+          <h3><strong>{encomenda.morador}</strong></h3>
           <p>
             <strong>Bloco:</strong> {encomenda.bloco} | <strong>Apartamento:</strong> {encomenda.apartamento}
           </p>
@@ -361,9 +431,9 @@ function PackageCard({
             <strong className="label">Empresa:</strong>{" "}
             <span className="value">{encomenda.empresa || "-"}</span>
           </div>
-          <div className="field">
+          <div className="field" style={{ whiteSpace: "nowrap" }}>
             <strong className="label">Recebido em:</strong>{" "}
-            <span className="value">{formatDateTimeBR(encomenda.dataRecebimento)}</span>
+            <span className="value" style={{ whiteSpace: "nowrap" }}>{formatDateTimeBR(encomenda.dataRecebimento)}</span>
           </div>
 
           {/* Recebido por (mostrar antes de Retirado por) */}
@@ -372,19 +442,6 @@ function PackageCard({
             <span className="value">{encomenda.recebidoPor || "-"}</span>
           </div>
 
-          {/* Sempre mostrar seção de retirada: pendente ou preenchida */}
-          <div className="field" style={{ marginTop: 6 }}>
-            <strong className="label">Retirado por:</strong>{" "}
-            <span className="value">
-              {encomenda.entregue ? (encomenda.retiradoPor || "-") : ""}
-            </span>
-          </div>
-          {encomenda.entregue && (
-            <div className="field">
-              <strong className="label">Retirado às:</strong>{" "}
-              <span className="value">{formatDateTimeBR(encomenda.dataRetirada)}</span>
-            </div>
-          )}
 
           {encomenda.entregue && (
             <div
@@ -403,7 +460,7 @@ function PackageCard({
                 <strong>Retirado por:</strong> {encomenda.retiradoPor}
               </p>
               <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                <strong>Retirado às:</strong> {encomenda.dataRetirada}
+                <strong>Retirado às:</strong> {formatDateTimeBRWithComma(encomenda.dataRetirada)}
               </p>
             </div>
           )}
@@ -475,4 +532,21 @@ function formatDateTimeBR(value?: string) {
   return isNaN(d.getTime())
     ? "-"
     : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+}
+
+// Apenas para o subcard verde: "DD/MM/YYYY, HH:mm" (sem segundos)
+function formatDateTimeBRWithComma(value?: string) {
+  if (!value) return "-"
+  const s = String(value)
+  // Se já vier como "DD/MM/YYYY HH:mm" ou "DD/MM/YYYY, HH:mm[:ss]", normaliza para vírgula sem segundos
+  const m = s.match(/^(\d{2}\/\d{2}\/\d{4})[ ,]?(\d{2}:\d{2})(?::\d{2})?$/)
+  if (m) return `${m[1]}, ${m[2]}`
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yyyy = d.getFullYear()
+  const hh = String(d.getHours()).padStart(2, "0")
+  const mi = String(d.getMinutes()).padStart(2, "0")
+  return `${dd}/${mm}/${yyyy}, ${hh}:${mi}`
 }

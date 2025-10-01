@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Mail, UserRound, ClipboardList, Home, Package, LogOut } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -15,6 +16,7 @@ export default function InicioPage() {
   const [userPhone, setUserPhone] = useState<string>("")
   const [userEmail, setUserEmail] = useState<string>("")
   const [moradores, setMoradores] = useState<Array<{ nome: string; telefone?: string; tipo?: string }>>([])
+  const [pendingCount, setPendingCount] = useState<number>(0)
   // data exemplo para aviso do condomínio (3 dias à frente)
   const energyAlertDate = (() => {
     const d = new Date()
@@ -23,6 +25,7 @@ export default function InicioPage() {
   })()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState({ left: 0, width: 0 })
+  const [mounted, setMounted] = useState(false)
 
   // logout copiado da /encomendas: limpa storage e faz replace + redirect
   const logout = () => {
@@ -37,7 +40,7 @@ export default function InicioPage() {
       localStorage.removeItem("displayName")
     } catch {}
     router.replace("/")
-    setTimeout(() => window.location.replace("/"), 100)
+  // removido reload para evitar flash de layout antigo
   }
 
   // prioriza ?nome na URL; se não existir, usa localStorage (fluxo de login)
@@ -102,6 +105,32 @@ export default function InicioPage() {
     return () => window.removeEventListener("resize", measure)
   }, [])
 
+  useEffect(() => { setMounted(true) }, [])
+
+  // carrega contagem de encomendas pendentes (não retiradas)
+  useEffect(() => {
+    const loadPending = async () => {
+      try {
+        const token = localStorage.getItem("token") || ""
+        if (!token) { setPendingCount(0); return }
+        const res = await fetch(`/api/encomendas?ts=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok || !Array.isArray(data)) { setPendingCount(0); return }
+        // API retorna retirado_por e/ou data_retirada quando entregue
+        const pending = data.filter((e: any) => !(e?.retirado_por || e?.data_retirada))
+        setPendingCount(pending.length)
+      } catch {
+        setPendingCount(0)
+      }
+    }
+    loadPending()
+    const id = setInterval(loadPending, 30000)
+    return () => clearInterval(id)
+  }, [])
+
   // carrega moradores do mesmo bloco/apto
   useEffect(() => {
     const loadMoradores = async () => {
@@ -134,15 +163,17 @@ export default function InicioPage() {
 
   return (
     <>
+      {/* Badge fixo removido a pedido: não exibir "Área do Morador" nesta página */}
+
       <div className="container" ref={containerRef}>
-  <div className="header" style={{ position: "relative", marginTop: 42 }}>
+        {/* título superior à direita, no mesmo lugar da saudação de /encomendas */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
+          <span style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)" }}>Página Inicial</span>
+        </div>
+
+        <div className="header" style={{ position: "relative", marginTop: 42 }}>
           <h1>Olá, {userName ? String(userName).split(" ")[0] : "Usuário"}!</h1>
           <p>Bem-vindo ao FatePack!</p>
-          {/* {mounted && ( */}
-          <div className="user-greeting" aria-hidden="true">
-            Área do Morador
-          </div>
-          {/* )} */}
         </div>
 
         <div className="main-content">
@@ -231,17 +262,22 @@ export default function InicioPage() {
                 </div>
               </div>
 
-              <div className="alert-item">
-                <div className="alert-icon" style={{ background: "#e0ecff" }} aria-hidden="true">📦</div>
-                <div className="alert-main">
-                  <div className="alert-title">Nova encomenda</div>
-                  <div className="alert-desc">Você tem uma nova encomenda para ser retirada.</div>
+              {pendingCount > 0 && (
+                <div className="alert-item new-package" style={{ position: "relative" }} onClick={() => router.push("/encomendas")}>
+                  <div className="alert-icon" style={{ background: "#e0ecff" }} aria-hidden="true">📦</div>
+                  <div className="alert-main">
+                    <div className="alert-title">Nova encomenda</div>
+                    <div className="alert-desc">Você tem uma nova encomenda para ser retirada.</div>
+                  </div>
+                  <span className="alert-count-badge" aria-label={`${pendingCount} encomenda(s) pendente(s)`}>{pendingCount}</span>
                 </div>
-                <span className="perfil-pill" aria-hidden="true">Novo</span>
-              </div>
+              )}
             </div>
           </div>
         </div>
+        {/* Espaço para não sobrepor o fim dos cards pelo nav fixo */}
+        {userName && (<div style={{ height: 96 }} aria-hidden="true" />)}
+
         {/* Nav inferior: mostra apenas quando o usuário estiver logado */}
         {userName && (
           <nav
@@ -278,17 +314,17 @@ export default function InicioPage() {
 
       <style jsx>{`
          .user-greeting {
-           position: fixed;
-           top: 10px;
-           right: 12px;
+           position: fixed !important;
+           top: 10px !important;
+           right: 12px !important;
            color: var(--primary, #06b6d4);
            font-weight: 700;
            font-size: 14px;
            padding: 6px 8px;
-           z-index: 1100;
+           z-index: 2000; /* acima da bottom-nav e cards */
          }
          @media (max-width: 520px) {
-           .user-greeting { top: 8px; right: 10px; font-size: 16px; }
+           .user-greeting { top: 8px !important; right: 10px !important; font-size: 16px; }
          }
       `}</style>
 
@@ -376,6 +412,23 @@ export default function InicioPage() {
         .alert-item {
           display: flex; align-items: center; gap: 12px;
           background: #f7f9fc; border-radius: 12px; padding: 14px 16px;
+        }
+        .alert-item.new-package .alert-count-badge {
+          position: absolute;
+          top: 8px;
+          right: 10px;
+          min-width: 22px;
+          height: 22px;
+          padding: 0 6px;
+          border-radius: 9999px;
+          background: #ef4444; /* vermelho para destaque */
+          color: #fff;
+          font-size: 12px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
         }
         .alert-icon {
           width: 40px; height: 40px; border-radius: 9999px;

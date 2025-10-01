@@ -19,7 +19,7 @@ export default function RecuperarSenhaPage() {
     // replace so user cannot go back to protected pages
     router.replace("/")
     // ensure full reload if any in-memory state remains
-    setTimeout(() => window.location.replace("/"), 100)
+  // removido reload para evitar flash de layout antigo
   }
 
   const [email, setEmail] = useState("")
