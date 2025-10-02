@@ -47,7 +47,7 @@ export default function LoginPage() {
   if (username) localStorage.setItem("userEmail", String(username).trim().toLowerCase())
 
   const role = String(data?.user?.tipo || data?.tipo || '').toLowerCase()
-  router.push(data.redirect || (role === 'admin' ? '/historico' : '/inicio'))
+  router.push(data.redirect || (role === 'admin' ? '/inicio-admin' : '/inicio'))
     } catch (err) {
       console.error("Login error:", err)
       setError("Erro ao autenticar")

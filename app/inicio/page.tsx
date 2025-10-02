@@ -372,7 +372,7 @@ export default function InicioPage() {
         }
         #inicio-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 10px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }

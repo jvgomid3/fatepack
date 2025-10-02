@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       ok: true,
       token,
       user: safe,
-      redirect: String(safe.tipo ?? "") === "admin" ? "/historico" : "/inicio",
+      redirect: String(safe.tipo ?? "") === "admin" ? "/inicio-admin" : "/inicio",
     })
   } catch (e: any) {
     console.error("POST /api/login error:", e?.message ?? e)
