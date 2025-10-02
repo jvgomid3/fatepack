@@ -163,7 +163,7 @@ export default function RecuperarSenhaPage() {
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
             <span ref={helloRef} style={{ fontWeight: 700 }}>Olá!</span>
           </div>
 

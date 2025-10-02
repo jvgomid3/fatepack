@@ -65,7 +65,7 @@ export default function InicioAdminPage() {
       <AdminGate />
       <div className="container" ref={containerRef}>
         <div className="main-content">
-          {/* Top bar com ← Sair à esquerda e "Página Inicial" à direita (igual à /inicio) */}
+          {/* Top bar com ←] Sair à esquerda e "Página Inicial" à direita (igual à /inicio) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <button
               type="button"
@@ -74,7 +74,7 @@ export default function InicioAdminPage() {
               aria-label="Sair"
               title="Sair"
             >
-              ← Sair
+              ←] Sair
             </button>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)" }}>
               Página Inicial

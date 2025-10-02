@@ -107,6 +107,28 @@ export default function InicioPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // Se detectar admin aqui, desloga e volta à home sem alterar a ordem de hooks
+  useEffect(() => {
+    try {
+      const t = (localStorage.getItem("userType") || "").toLowerCase()
+      if (t === "admin") {
+        try {
+          localStorage.removeItem("userType")
+          localStorage.removeItem("userName")
+          localStorage.removeItem("userBlock")
+          localStorage.removeItem("userApartment")
+          localStorage.removeItem("currentUser")
+          localStorage.removeItem("user")
+          localStorage.removeItem("token")
+          localStorage.removeItem("displayName")
+          localStorage.removeItem("userEmail")
+          localStorage.removeItem("telefone")
+        } catch {}
+        router.replace("/")
+      }
+    } catch {}
+  }, [router])
+
   // carrega contagem de encomendas pendentes (não retiradas)
   useEffect(() => {
     const loadPending = async () => {
@@ -242,7 +264,7 @@ export default function InicioPage() {
                   </div>
                 ))
               ) : (
-                <div style={{ color: "var(--muted-foreground)" }}>Nenhum morador encontrado para este apartamento.</div>
+                <div style={{ color: "var(--muted-foreground)" }}>❌ Nenhum morador encontrado para este apartamento.</div>
               )}
             </div>
           </div>

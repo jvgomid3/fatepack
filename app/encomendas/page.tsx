@@ -82,7 +82,7 @@ export default function EncomendasPage() {
       "usuario"
     setDisplayName(name)
 
-    // iguala a cor do "Olá, ..." à cor do link "← Sair"
+  // iguala a cor do "Olá, ..." à cor do link "←] Sair"
     const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
     const helloEl = helloRef.current
     if (linkEl && helloEl) {
@@ -165,10 +165,25 @@ export default function EncomendasPage() {
     const t = (localStorage.getItem("userType") || "").toLowerCase()
     const admin = t === "admin"
     setIsAdmin(admin)
-    if (admin) router.replace("/historico")
+    if (admin) {
+      try {
+        localStorage.removeItem("userType")
+        localStorage.removeItem("userName")
+        localStorage.removeItem("userBlock")
+        localStorage.removeItem("userApartment")
+        localStorage.removeItem("currentUser")
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
+        localStorage.removeItem("displayName")
+        localStorage.removeItem("userEmail")
+        localStorage.removeItem("telefone")
+      } catch {}
+      router.replace("/")
+    }
   }, [router])
 
-  if (isAdmin) return null
+  // Importante: não retornar antes de chamar todos os hooks;
+  // o retorno condicional será feito mais abaixo, após os hooks.
 
   // Base: admin vê todas; morador vê apenas dele (bloco/apto)
   const base = isAdmin
@@ -242,7 +257,7 @@ export default function EncomendasPage() {
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName).split(" ")[0]}` : " usuario"}!
             </span>

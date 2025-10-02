@@ -176,7 +176,7 @@ export default function HistoricoPage() {
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>← Sair</Link>
+            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>
