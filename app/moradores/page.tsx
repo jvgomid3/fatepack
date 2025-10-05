@@ -91,6 +91,8 @@ export default function MoradoresPage() {
   const [searchApto, setSearchApto] = useState("")
   const [results, setResults] = useState<Morador[]>([])
   const [hasSearched, setHasSearched] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const searchDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [msg, setMsg] = useState<string>("")
   const [msgType, setMsgType] = useState<"success" | "warn" | "error" | null>(null)
   const [form, setForm] = useState<Morador>({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" })
@@ -123,6 +125,11 @@ export default function MoradoresPage() {
     setMsg("")
     setMsgType(null)
     setResults([])
+    // inicia estado de busca com atraso mínimo de 3s para evitar flicker de "Nenhum..."
+    setIsSearching(true)
+    setHasSearched(false)
+    if (searchDelayRef.current) { clearTimeout(searchDelayRef.current) }
+    let completed = false
     try {
       const params = new URLSearchParams()
       if (searchEmail) params.set("email", searchEmail)
@@ -130,13 +137,49 @@ export default function MoradoresPage() {
       if (searchBloco) params.set("bloco", searchBloco)
       if (searchApto) params.set("apartamento", searchApto)
       const qs = params.toString()
-      if (!qs) { setMsg("Informe pelo menos um filtro para buscar."); setMsgType("warn"); setHasSearched(false); return }
-      setHasSearched(true)
+      if (!qs) {
+        setMsg("Informe pelo menos um filtro para buscar.")
+        setMsgType("warn")
+        setIsSearching(false)
+        setHasSearched(false)
+        return
+      }
+      // timeout mínimo de 3s para exibir "Buscando..." caso não haja resultados
+      searchDelayRef.current = setTimeout(() => {
+        if (!completed) {
+          setIsSearching(false)
+          setHasSearched(true)
+        }
+      }, 3000)
       const r = await fetch(`/api/moradores?${qs}`)
       const j = await r.json().catch(() => null)
-      if (!r.ok) { setMsg(j?.error || "Falha na busca"); setMsgType("error"); return }
-      setResults(Array.isArray(j?.items) ? j.items : [])
+      if (!r.ok) {
+        if (searchDelayRef.current) { clearTimeout(searchDelayRef.current); searchDelayRef.current = null }
+        completed = true
+        setIsSearching(false)
+        setHasSearched(true)
+        setMsg(j?.error || "Falha na busca")
+        setMsgType("error")
+        return
+      }
+      const items = Array.isArray(j?.items) ? j.items : []
+      setResults(items)
+      if (items.length > 0) {
+        // encontrou: mostra imediatamente os resultados (sem aguardar 3s)
+        if (searchDelayRef.current) { clearTimeout(searchDelayRef.current); searchDelayRef.current = null }
+        completed = true
+        setIsSearching(false)
+        setHasSearched(true)
+      } else {
+        // sem resultados: aguarda até 3s para então exibir "Nenhum..."
+        completed = false
+        // setHasSearched será feito pelo timeout se continuar vazio
+      }
     } catch {
+      if (searchDelayRef.current) { clearTimeout(searchDelayRef.current); searchDelayRef.current = null }
+      completed = true
+      setIsSearching(false)
+      setHasSearched(true)
       setMsg("Falha ao buscar moradores.")
       setMsgType("error")
     }
@@ -381,9 +424,14 @@ export default function MoradoresPage() {
 
               {/* Lista de resultados */}
               <div className="results">
-                {!hasSearched ? null : (
+                {isSearching ? (
+                  <div className="loading" role="status" aria-live="polite" aria-busy="true">
+                    <span className="spinner" aria-hidden="true" />
+                    <span className="loading-text">Buscando...</span>
+                  </div>
+                ) : !hasSearched ? null : (
                   results.length === 0 && !msg ? (
-                    <div className="empty">❌ Nenhum morador encontrado.</div>
+                    <div className="empty">❌ Nenhum morador encontrado</div>
                   ) : (
                     results.map((m, idx) => (
                       <div key={`${m.email}-${idx}`} className="result-item">
@@ -589,12 +637,12 @@ export default function MoradoresPage() {
         .tabs { display: flex; justify-content: center; margin: 12px 0 8px; }
         .segmented {
           display: inline-flex;
-          background: #f1f5f9;
+          background: #f8fafc; /* mais claro, como no mock */
           border: 1px solid #e2e8f0;
           padding: 4px;
           border-radius: 9999px;
           gap: 4px;
-          box-shadow: 0 1px 2px rgba(2, 132, 199, 0.06);
+          box-shadow: 0 2px 10px rgba(2, 132, 199, 0.08);
         }
         .seg-btn {
           appearance: none;
@@ -609,10 +657,10 @@ export default function MoradoresPage() {
         }
         .seg-btn:hover { background: rgba(2, 132, 199, 0.08); }
         .seg-btn.active {
-          background: var(--primary, #0ea5e9);
+          background: linear-gradient(180deg, #0fb5f1, #0ea5e9 45%, #0a8fd0 100%);
           color: #fff;
-          box-shadow: 0 1px 0 #0284c7 inset, 0 1px 4px rgba(2, 132, 199, 0.25);
-          border: 1px solid #0284c7;
+          box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 6px 16px rgba(14, 165, 233, 0.35);
+          border: 1px solid #0891b2;
         }
 
         /* Forms */
@@ -643,13 +691,19 @@ export default function MoradoresPage() {
     background-color: #e2e8f0;
   }
 
-        /* Primary button (Buscar) to set the reference blue in this page */
-        .btn.btn-primary { background-color: #0ea5e9; border: 1px solid #0284c7; color: #fff; }
-        .btn.btn-primary:hover { background-color: #0ca3e6; }
+        /* Primary button (Buscar) com gradiente e largura total do card */
+        .btn.btn-primary {
+          background: linear-gradient(180deg, #12b4ea, #0ea5e9 50%, #0c9ad9);
+          border: 1px solid #0284c7;
+          color: #fff;
+          border-radius: 12px;
+          box-shadow: 0 6px 18px rgba(14, 165, 233, 0.35);
+        }
+        .btn.btn-primary:hover { filter: brightness(1.02); }
 
     /* Buscar actions */
-    .actions-search { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; }
-    .actions-search .btn.btn-primary { min-width: 160px; }
+    .actions-search { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 10px; }
+    .actions-search .btn.btn-primary { width: 100%; }
 
         /* Results */
         .results { margin-top: 10px; display: grid; gap: 8px; }
@@ -674,6 +728,21 @@ export default function MoradoresPage() {
           max-width: 520px;
           margin: 8px auto; /* centraliza horizontal */
         }
+        /* Limpar Filtros menor e abaixo do botão */
+        .actions-search .link-clear { font-size: 13px; margin-top: 2px; color: #0ea5e9; }
+      `}</style>
+
+      {/* estilos do loader, escopo mínimo para não afetar outros elementos */}
+      <style jsx>{`
+        .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; color: var(--muted-foreground); }
+        .loading-text { font-weight: 600; }
+        .spinner {
+          width: 20px; height: 20px; border-radius: 50%; display: inline-block;
+          border: 3px solid rgba(14, 165, 233, 0.25); /* anel base mais visível */
+          border-top-color: #0ea5e9; /* destaque azul */
+          animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
       {/* Confirm deletion dialog */}

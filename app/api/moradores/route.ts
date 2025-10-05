@@ -26,7 +26,8 @@ export async function GET(req: Request) {
     const nome = sanitizeStr(url.searchParams.get("nome"))
     const email = sanitizeStr(url.searchParams.get("email"))
     const bloco = sanitizeStr(url.searchParams.get("bloco"))
-    const apartamento = sanitizeStr(url.searchParams.get("apartamento"))
+    // aceita tanto "apartamento" quanto "apto" na query
+    const apartamento = sanitizeStr(url.searchParams.get("apartamento") || url.searchParams.get("apto"))
 
     let query = supabase
       .from("usuario")
@@ -52,7 +53,9 @@ export async function GET(req: Request) {
       bloco: d.bloco,
       apartamento: d.apto,
     }))
-    return NextResponse.json({ ok: true, items })
+    // compat: algumas telas esperam "moradores" ao invés de "items"
+    const moradores = items.map((x: any) => ({ nome: x.nome, telefone: x.telefone, tipo: x.tipo }))
+    return NextResponse.json({ ok: true, items, moradores })
   } catch (e: any) {
     console.error("/api/moradores GET error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
@@ -78,7 +81,11 @@ export async function POST(req: Request) {
     }
 
     if (!payload.nome || !payload.email) {
-      return NextResponse.json({ error: "NOME_EMAIL_OBRIGATORIOS" }, { status: 400 })
+      return NextResponse.json({ error: "NOME_EMAIL_OBRIGATORIOS", detail: "Nome e e-mail são obrigatórios" }, { status: 400 })
+    }
+    // Bloco/Apartamento obrigatórios para criar o vínculo
+    if (!payload.bloco || !payload.apto) {
+      return NextResponse.json({ error: "BLOCO_APARTAMENTO_OBRIGATORIOS", detail: "Bloco e Apartamento são obrigatórios para vincular o morador ao apartamento." }, { status: 400 })
     }
 
     // Use admin client if available to bypass any RLS or permissions issues
@@ -91,7 +98,7 @@ export async function POST(req: Request) {
     const { data, error } = await client
       .from("usuario")
       .insert(payload)
-      .select("nome, email, telefone, tipo, bloco, apto")
+      .select("id_usuario, nome, email, telefone, tipo, bloco, apto")
       .single()
 
     if (error) {
@@ -110,17 +117,116 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: "DB_ERROR", detail: error.message || error.hint || "" }, { status: 500 })
     }
+    // Após criar o usuário, cria o vínculo em usuario_apartamento
+    const userId = (data as any)?.id_usuario as number | undefined
+    const blocoStr = String(payload.bloco)
+    const aptoRaw = String(payload.apto)
+
+    // Resolve ou cria bloco
+    let id_bloco: number | null = null
+    {
+      const { data: b1, error: be1 } = await client
+        .from("bloco")
+        .select("id_bloco")
+        .eq("nome", blocoStr)
+        .maybeSingle()
+      if (be1 && be1.message) console.error("/api/moradores POST bloco lookup:", be1.message)
+      if (b1 && (b1 as any).id_bloco != null) {
+        id_bloco = Number((b1 as any).id_bloco)
+      } else {
+        const { data: bins, error: be2 } = await client
+          .from("bloco")
+          .insert({ nome: blocoStr })
+          .select("id_bloco")
+          .single()
+        if (be2) {
+          console.error("/api/moradores POST bloco insert:", be2.message)
+          return NextResponse.json({ error: "DB_ERROR", detail: be2.message }, { status: 500 })
+        }
+        id_bloco = Number((bins as any).id_bloco)
+      }
+    }
+
+    // Resolve ou cria apartamento
+    let id_apartamento: number | null = null
+    if (id_bloco && userId) {
+      const digits = aptoRaw.replace(/\D/g, "")
+      const asNumber = digits ? Number(digits) : null
+      // Tenta como string primeiro
+      let a1Res = await client
+        .from("apartamento")
+        .select("id_apartamento")
+        .eq("numero", aptoRaw)
+        .eq("id_bloco", id_bloco)
+        .maybeSingle()
+      if (a1Res.error && a1Res.error.message) console.error("/api/moradores POST apartamento lookup(string):", a1Res.error.message)
+      if (a1Res.data && (a1Res.data as any).id_apartamento != null) {
+        id_apartamento = Number((a1Res.data as any).id_apartamento)
+      } else {
+        // tenta como número (alguns schemas usam numero integer)
+        if (asNumber !== null && asNumber !== undefined && String(asNumber) !== aptoRaw) {
+          const a2Res = await client
+            .from("apartamento")
+            .select("id_apartamento")
+            .eq("numero", asNumber as any)
+            .eq("id_bloco", id_bloco)
+            .maybeSingle()
+          if (a2Res.error && a2Res.error.message) console.error("/api/moradores POST apartamento lookup(number):", a2Res.error.message)
+          if (a2Res.data && (a2Res.data as any).id_apartamento != null) {
+            id_apartamento = Number((a2Res.data as any).id_apartamento)
+          }
+        }
+        if (!id_apartamento) {
+          // cria
+          const toInsertNumero: any = asNumber !== null && asNumber !== undefined ? asNumber : aptoRaw
+          const { data: ains, error: ae } = await client
+            .from("apartamento")
+            .insert({ numero: toInsertNumero, id_bloco })
+            .select("id_apartamento")
+            .single()
+          if (ae) {
+            console.error("/api/moradores POST apartamento insert:", ae.message)
+            return NextResponse.json({ error: "DB_ERROR", detail: ae.message }, { status: 500 })
+          }
+          id_apartamento = Number((ains as any).id_apartamento)
+        }
+      }
+    }
+
+    if (!userId || !id_apartamento) {
+      return NextResponse.json({ error: "FALHA_VINCULO", detail: "Não foi possível resolver usuário/apartamento para vínculo." }, { status: 500 })
+    }
+
+    // data_entrada = agora - 3 horas, formato YYYY-MM-DD HH:mm:ss
+    const d = new Date(Date.now() - 3 * 60 * 60 * 1000)
+    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+    const ts = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+
+    const linkIns = await client
+      .from("usuario_apartamento")
+      .insert({ id_usuario: userId, id_apartamento, data_entrada: ts })
+    if (linkIns.error) {
+      // Trata duplicidade como sucesso idempotente
+      const em = (linkIns.error.message || "").toLowerCase()
+      const isDup = linkIns.error.code === "23505" || em.includes("duplicate") || em.includes("unique")
+      if (!isDup) {
+        console.error("/api/moradores POST vinculo insert:", linkIns.error.message)
+        return NextResponse.json({ error: "DB_ERROR", detail: linkIns.error.message }, { status: 500 })
+      }
+    }
+
     const item = data
       ? {
-          nome: data.nome,
-          email: data.email,
-          telefone: data.telefone,
-          tipo: data.tipo,
-          bloco: data.bloco,
-          apartamento: data.apto,
+          id_usuario: (data as any).id_usuario,
+          nome: (data as any).nome,
+          email: (data as any).email,
+          telefone: (data as any).telefone,
+          tipo: (data as any).tipo,
+          bloco: (data as any).bloco,
+          apartamento: (data as any).apto,
         }
       : null
-    return NextResponse.json({ ok: true, item })
+    return NextResponse.json({ ok: true, item, vinculoCriado: true })
   } catch (e: any) {
     console.error("/api/moradores POST error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
@@ -199,34 +305,61 @@ export async function DELETE(req: Request) {
       ? createClient(supaUrl, adminKey, { auth: { persistSession: false } })
       : supabase
 
-    const { data, error, status } = await client
+    // 1) Descobre o id_usuario pelo e-mail (case-sensitive depois case-insensitive)
+    let userId: number | null = null
+    {
+      const { data: u1, error: e1 } = await client
+        .from("usuario")
+        .select("id_usuario, email")
+        .eq("email", email)
+        .maybeSingle()
+      if (e1 && e1.message) {
+        console.error("/api/moradores DELETE lookup error (eq):", e1.message)
+      }
+      if (u1 && (u1 as any).id_usuario != null) {
+        userId = Number((u1 as any).id_usuario)
+      } else {
+        const { data: u2, error: e2 } = await client
+          .from("usuario")
+          .select("id_usuario, email")
+          .ilike("email", email)
+          .limit(1)
+        if (e2 && e2.message) {
+          console.error("/api/moradores DELETE lookup error (ilike):", e2.message)
+        }
+        if (u2 && Array.isArray(u2) && u2.length > 0) {
+          userId = Number((u2[0] as any).id_usuario)
+        }
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: "USUARIO_NAO_ENCONTRADO" }, { status: 404 })
+    }
+
+    // 2) Remove vínculos na tabela usuario_apartamento (não falha se não houver)
+    const delLink = await client
+      .from("usuario_apartamento")
+      .delete()
+      .eq("id_usuario", userId)
+    if (delLink.error) {
+      console.error("/api/moradores DELETE vinculo error:", delLink.error.message)
+      return NextResponse.json({ error: "DB_ERROR", detail: delLink.error.message }, { status: 500 })
+    }
+
+    // 3) Exclui o usuário em si
+    const delUser = await client
       .from("usuario")
       .delete()
-      .eq("email", email)
-      .select("email")
+      .eq("id_usuario", userId)
+      .select("id_usuario")
 
-    if (error) {
-      console.error("/api/moradores DELETE supabase error:", error.message)
-      return NextResponse.json({ error: "DB_ERROR", detail: error.message }, { status: 500 })
+    if (delUser.error) {
+      console.error("/api/moradores DELETE usuario error:", delUser.error.message)
+      return NextResponse.json({ error: "DB_ERROR", detail: delUser.error.message }, { status: 500 })
     }
-    if (!data || data.length === 0) {
-      // Try case-insensitive match if exact match didn't find anything
-      const res2 = await client
-        .from("usuario")
-        .delete()
-        .ilike("email", email)
-        .select("email")
-      if (res2.error) {
-        console.error("/api/moradores DELETE supabase ilike error:", res2.error.message)
-        return NextResponse.json({ error: "DB_ERROR", detail: res2.error.message }, { status: 500 })
-      }
-      if (!res2.data || res2.data.length === 0) {
-        return NextResponse.json({ error: "USUARIO_NAO_ENCONTRADO" }, { status: 404 })
-      }
-      return NextResponse.json({ ok: true, status: res2.status })
-    }
-
-    return NextResponse.json({ ok: true, status })
+    // Se nenhum registro foi apagado aqui, pode ter sido removido por outra ação; tratamos como sucesso idempotente
+    return NextResponse.json({ ok: true, removed: (delUser.data || []).length }, { status: 200 })
   } catch (e: any) {
     console.error("/api/moradores DELETE error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })

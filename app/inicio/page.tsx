@@ -264,7 +264,7 @@ export default function InicioPage() {
                   </div>
                 ))
               ) : (
-                <div style={{ color: "var(--muted-foreground)" }}>❌ Nenhum morador encontrado para este apartamento.</div>
+                <div style={{ color: "var(--muted-foreground)" }}>❌ Nenhum morador encontrado para este apartamento</div>
               )}
             </div>
           </div>

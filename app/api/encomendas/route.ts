@@ -59,18 +59,53 @@ export async function GET(req: Request) {
       )
     }
 
-    const bloco = String(user.bloco ?? "").trim().padStart(2, "0")
-    const apto  = String(user.apto  ?? user.apartamento ?? "").trim().padStart(2, "0")
-    const { data, error } = await supabaseAdmin
+    // Implementa janela de visibilidade via usuario_apartamento (data_entrada/data_saida)
+    const userId = Number(user.id)
+    // 1) Buscar vínculos do usuário
+    const { data: vinculos, error: errUa } = await supabaseAdmin
+      .from("usuario_apartamento")
+      .select("id_apartamento, data_entrada, data_saida")
+      .eq("id_usuario", userId)
+    if (errUa) throw errUa
+    if (!vinculos || !vinculos.length) {
+      return NextResponse.json([])
+    }
+
+    const aptoIds = Array.from(new Set(vinculos.map((v: any) => v.id_apartamento).filter(Boolean)))
+    if (!aptoIds.length) {
+      return NextResponse.json([])
+    }
+
+    // 2) Buscar encomendas desses apartamentos e ordenar
+    const { data: encomendas, error: errEnc } = await supabaseAdmin
       .from(TABLE)
       .select(baseSelect)
-      .eq("bloco", bloco)
-      .eq("apartamento", apto)
+      .in("id_apartamento", aptoIds)
       .order("data_recebimento", { ascending: false, nullsFirst: false })
       .order("id_encomenda", { ascending: false })
-    if (error) throw error
+    if (errEnc) throw errEnc
+
+    // 3) Filtrar por intervalo do vínculo (data_entrada <= data_recebimento <= coalesce(data_saida, now))
+    const now = new Date()
+    const parseDate = (v: any) => {
+      try { return v ? new Date(v) : null } catch { return null }
+    }
+    const fitsWindow = (e: any) => {
+      const dr = parseDate(e.data_recebimento)
+      if (!dr) return false
+      const vForApto = (vinculos || []).filter((v: any) => Number(v.id_apartamento) === Number(e.id_apartamento))
+      for (const v of vForApto) {
+        const de = parseDate(v.data_entrada)
+        const ds = parseDate(v.data_saida)
+        if (!de) continue
+        if (dr >= de && (ds ? dr <= ds : dr <= now)) return true
+      }
+      return false
+    }
+
+    const filtered = (encomendas || []).filter(fitsWindow)
     return NextResponse.json(
-      (data || []).map((e: any) => ({
+      filtered.map((e: any) => ({
         id: e.id_encomenda,
         empresa_entrega: e.empresa_entrega,
         data_recebimento: e.data_recebimento,
