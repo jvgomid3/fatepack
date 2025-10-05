@@ -426,6 +426,34 @@ function PackageCard({
   const [showDeliveryForm, setShowDeliveryForm] = useState(false)
   const [retiradoPor, setRetiradoPor] = useState("")
 
+  // Cálculo de dias pendentes a partir de dataRecebimento (ISO ou BR dd/mm/aaaa)
+  const parseDate = (v?: string) => {
+    if (!v) return null
+    const s = String(v)
+    let d = new Date(s)
+    if (isNaN(d.getTime())) {
+      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+      if (m) {
+        const dd = parseInt(m[1], 10)
+        const mm = parseInt(m[2], 10) - 1
+        const yyyy = parseInt(m[3], 10)
+        d = new Date(yyyy, mm, dd)
+      }
+    }
+    return isNaN(d.getTime()) ? null : d
+  }
+  const computePendingDays = (v?: string) => {
+    const d = parseDate(v)
+    if (!d) return null
+    const now = new Date()
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const diffMs = today.getTime() - start.getTime()
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
+  }
+  const pendingDays = computePendingDays(encomenda.dataRecebimento)
+  const pendingLabel = pendingDays == null ? null : pendingDays.toString().padStart(2, "0")
+
   const handleEntrega = () => {
     if (retiradoPor.trim()) {
       onMarcarEntregue(encomenda.id, retiradoPor.trim())
@@ -480,10 +508,19 @@ function PackageCard({
             </div>
           )}
         </div>
-        {isNew && <span className="badge new">NOVA</span>}
-        {!encomenda.entregue && (
-          <span className="badge" title="Pendente" style={{ backgroundColor: "#f59e0b", color: "#111827" }}>PENDENTE</span>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          {isNew && <span className="badge new">NOVA</span>}
+          {!encomenda.entregue && (
+            <>
+              <span className="badge" title="Pendente" style={{ backgroundColor: "#f59e0b", color: "#111827" }}>PENDENTE</span>
+              {pendingLabel != null && (
+                <div style={{ color: "#334155", fontSize: 13, fontWeight: 700, lineHeight: 1.1, textAlign: "right" }}>
+                  ⏰ Há {pendingLabel} {pendingDays === 1 ? "dia" : "dias"}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
