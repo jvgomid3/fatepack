@@ -19,11 +19,14 @@ interface Encomenda {
   recebidoPor?: string // novo
 }
 
-// Capitaliza a primeira letra não-espaço
+// Capitaliza a primeira letra de cada palavra (suporta hífen) e normaliza restante em minúsculas
 const capFirst = (s: string) => {
-  const i = s.search(/\S/)
-  if (i === -1) return ""
-  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
+  const toTitle = (w: string) => (w ? w.charAt(0).toLocaleUpperCase("pt-BR") + w.slice(1) : w)
+  return (s || "")
+    .toLowerCase()
+    .split(/(\s+)/) // preserva espaços
+    .map((tok) => (tok.trim() === "" ? tok : tok.split("-").map(toTitle).join("-")))
+    .join("")
 }
 
 export default function RegistrarPage() {
@@ -55,6 +58,7 @@ export default function RegistrarPage() {
   const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
 
   const [lastRecebidoPor, setLastRecebidoPor] = useState("") // novo
+  const [isRegistering, setIsRegistering] = useState(false)
 
   const blocos = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
 
@@ -129,57 +133,73 @@ export default function RegistrarPage() {
       return
     }
 
-    const token = localStorage.getItem("token") || ""
-    const res = await fetch("/api/encomendas", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: isJWT(token) ? `Bearer ${token}` : "",
-      },
-      body: JSON.stringify({ empresa_entrega, bloco, apartamento, nome, recebido_por }),
-    })
+    // Loader inline (mín. 3s) igual ao /moradores
+    setIsRegistering(true)
+    await new Promise((res) => setTimeout(res, 0))
+    const start = Date.now()
+    try {
+      const token = localStorage.getItem("token") || ""
+      const res = await fetch("/api/encomendas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: isJWT(token) ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ empresa_entrega, bloco, apartamento, nome, recebido_por }),
+      })
+      const data = await res.json().catch(() => null)
+      const elapsed = Date.now() - start
+      if (elapsed < 3000) { await new Promise((res) => setTimeout(res, 3000 - elapsed)) }
 
-    const data = await res.json().catch(() => null)
-    if (res.status === 401) {
-      const reason = String(data?.reason || "").toUpperCase()
-      if (reason === "ROLE_NOT_ALLOWED") {
-        alert("Seu usuário não tem permissão para registrar encomendas. Entre como administrador/porteiro/síndico.")
-      } else {
-        alert("Sessão inválida ou expirada. Faça login novamente.")
+      if (res.status === 401) {
+        const reason = String(data?.reason || "").toUpperCase()
+        if (reason === "ROLE_NOT_ALLOWED") {
+          alert("Seu usuário não tem permissão para registrar encomendas. Entre como administrador/porteiro/síndico.")
+        } else {
+          alert("Sessão inválida ou expirada. Faça login novamente.")
+        }
+        try { localStorage.removeItem("token") } catch {}
+        setIsRegistering(false)
+        router.replace("/")
+        return
       }
-      try { localStorage.removeItem("token") } catch {}
-      router.replace("/")
-      return
-    }
-    if (!res.ok) {
-      if (data?.error === "AMBIGUOUS_APARTMENT" && Array.isArray(data?.residents)) {
-        alert(`Apto com múltiplos moradores. Informe o destinatário exato.\nOpções: ${data.residents.join(", ")}`)
-      } else if (data?.error === "NO_USER_FOR_APARTMENT") {
-        alert("Não há morador vinculado a este apartamento. Cadastre o morador primeiro.")
-      } else if (data?.error === "APARTAMENTO_NOT_FOUND") {
-        alert("Apartamento não encontrado. Verifique bloco e número (use 2 dígitos: 01, 02, ...).")
-      } else {
-        alert(data?.error || "Falha ao registrar")
+      if (!res.ok) {
+        if (data?.error === "AMBIGUOUS_APARTMENT" && Array.isArray(data?.residents)) {
+          alert(`Apto com múltiplos moradores. Informe o destinatário exato.\nOpções: ${data.residents.join(", ")}`)
+        } else if (data?.error === "NO_USER_FOR_APARTMENT") {
+          alert("Não há morador vinculado a este apartamento. Cadastre o morador primeiro.")
+        } else if (data?.error === "APARTAMENTO_NOT_FOUND") {
+          alert("Apartamento não encontrado. Verifique bloco e número (use 2 dígitos: 01, 02, ...).")
+        } else {
+          alert(data?.error || "Falha ao registrar")
+        }
+        setIsRegistering(false)
+        return
       }
-      return
+
+      // sucesso: mostrar alerta de confirmação
+      const recPor = String(data?.recebido_por || recebido_por)
+      setLastRecebidoPor(recPor)
+      setShowAlert(true)
+      // rolar para o topo para o usuário ver o alerta
+      containerRef.current?.scrollTo?.({ top: 0, behavior: "smooth" })
+
+      // limpar formulário
+      setBloco("")
+      setApartamento("")
+      setMorador("")
+      setEmpresa("")
+      setEmpresaIsOutro(false)
+
+      // esconder alerta após alguns segundos
+      setTimeout(() => setShowAlert(false), 3500)
+      setIsRegistering(false)
+    } catch {
+      const elapsed = Date.now() - start
+      if (elapsed < 3000) { await new Promise((res) => setTimeout(res, 3000 - elapsed)) }
+      alert("Falha ao registrar")
+      setIsRegistering(false)
     }
-
-    // sucesso: mostrar alerta de confirmação
-    const recPor = String(data?.recebido_por || recebido_por)
-    setLastRecebidoPor(recPor)
-    setShowAlert(true)
-    // opcional: rolar para o topo para o usuário ver o alerta
-    containerRef.current?.scrollTo?.({ top: 0, behavior: "smooth" })
-
-    // limpar formulário
-    setBloco("")
-    setApartamento("")
-    setMorador("")
-    setEmpresa("")
-    setEmpresaIsOutro(false)
-
-    // esconder alerta após alguns segundos
-    setTimeout(() => setShowAlert(false), 3500)
   }
 
   return (
@@ -202,12 +222,26 @@ export default function RegistrarPage() {
           </div>
 
           {showAlert && (
-            <div className="alert success">
-              ✅ Encomenda registrada com sucesso!
-              <br />
-              O morador será notificado.
-              <br />
-              <small>Recebido por {lastRecebidoPor}</small>
+            <div
+              className="popup-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="encomenda-ok-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowAlert(false)
+              }}
+            >
+              <div className="popup-card" role="document">
+                <div className="popup-icons" aria-hidden="true">
+                  <span className="emoji-box">📦</span>
+                  <span className="emoji-sparkle s1">✨</span>
+                  <span className="emoji-sparkle s2">✨</span>
+                  <span className="emoji-sparkle s3">✨</span>
+                </div>
+                <h3 id="encomenda-ok-title" className="popup-title">Encomenda registrada com sucesso!</h3>
+                <p className="popup-text">O morador será notificado.</p>
+                <p className="popup-small">Recebido por {lastRecebidoPor}</p>
+              </div>
             </div>
           )}
 
@@ -308,6 +342,12 @@ export default function RegistrarPage() {
                   Registrar Encomenda
                 </button>
               </div>
+              {isRegistering && (
+                <div className="loading registering-inline" role="status" aria-live="polite" aria-busy="true" style={{ marginTop: 8 }}>
+                  <span className="spinner" aria-hidden="true" />
+                  <span className="loading-text">Registrando...</span>
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -379,6 +419,53 @@ export default function RegistrarPage() {
         }
         #registrar-nav .nav-icon-svg { width: 18px; height: 18px; }
         #registrar-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
+      `}</style>
+
+      {/* estilos do loader (reutiliza padrão do /moradores) */}
+      <style jsx>{`
+        .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; color: var(--muted-foreground); }
+        .loading-text { font-weight: 600; }
+        .spinner {
+          width: 20px; height: 20px; border-radius: 50%; display: inline-block;
+          border: 3px solid rgba(14, 165, 233, 0.25);
+          border-top-color: #0ea5e9;
+          animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .registering-inline { justify-content: center; }
+        /* Popup overlay de sucesso */
+        .popup-overlay {
+          position: fixed; inset: 0; z-index: 1100;
+          background: rgba(15, 23, 42, 0.45); /* slate-900/45 */
+          display: flex; align-items: center; justify-content: center;
+          animation: overlayFade .18s ease-out;
+        }
+        @keyframes overlayFade { from { opacity: 0 } to { opacity: 1 } }
+        .popup-card {
+          position: relative;
+          width: min(520px, 92vw);
+          background: #ffffff;
+          border-radius: 16px;
+          padding: 22px 18px 16px;
+          box-shadow: 0 30px 80px rgba(2, 132, 199, 0.25), 0 8px 24px rgba(15, 23, 42, 0.18);
+          border: 1px solid rgba(2, 132, 199, 0.25);
+          text-align: center;
+          animation: cardPop .22s cubic-bezier(.18,.89,.32,1.28);
+        }
+        @keyframes cardPop { from { transform: scale(.92); opacity: .6 } to { transform: scale(1); opacity: 1 } }
+        .popup-icons { position: relative; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+        .emoji-box { font-size: 56px; filter: drop-shadow(0 6px 12px rgba(2, 132, 199, .25)); }
+        .emoji-sparkle { position: absolute; font-size: 26px; opacity: 0.92; }
+        .emoji-sparkle.s1 { top: -6px; left: -22px; animation: float1 1.8s ease-in-out infinite; }
+        .emoji-sparkle.s2 { top: -10px; right: -20px; animation: float2 2.1s ease-in-out infinite; }
+        .emoji-sparkle.s3 { bottom: -4px; right: -10px; animation: float3 1.9s ease-in-out infinite; }
+        @keyframes float1 { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-6px) rotate(6deg) } }
+        @keyframes float2 { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-8px) rotate(-6deg) } }
+        @keyframes float3 { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-5px) rotate(4deg) } }
+        .popup-title { margin: 6px 0 2px; font-size: 20px; font-weight: 800; color: #0f172a; }
+        .popup-text { margin: 0 0 8px; font-size: 15px; color: #0f172a; font-weight: 600; }
+        .popup-small { margin: 0 0 12px; font-size: 13px; color: #334155; }
+        /* botão removido */
       `}</style>
     </>
   )
