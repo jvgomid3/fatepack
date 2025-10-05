@@ -95,11 +95,17 @@ export default function MoradoresPage() {
   const searchDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [msg, setMsg] = useState<string>("")
   const [msgType, setMsgType] = useState<"success" | "warn" | "error" | null>(null)
+  const [createMsg, setCreateMsg] = useState<string>("")
+  const [searchMsg, setSearchMsg] = useState<string>("")
   const [form, setForm] = useState<Morador>({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" })
   const [isEditing, setIsEditing] = useState(false)
   const [originalEmail, setOriginalEmail] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleteTargetEmail, setDeleteTargetEmail] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [updateMsg, setUpdateMsg] = useState<string>("")
+  const updateMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const createMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // helpers: mask telefone
   const formatPhone = (v: string) => {
@@ -122,6 +128,7 @@ export default function MoradoresPage() {
   }
 
   const handleSearch = async () => {
+    setSearchMsg("")
     setMsg("")
     setMsgType(null)
     setResults([])
@@ -200,23 +207,31 @@ export default function MoradoresPage() {
   const onCreate = async () => {
     setMsg("")
     setMsgType(null)
+    const telDigits = (String(form.telefone || "").match(/\d+/g) || []).join("")
+    const payload = {
+      nome: String(form.nome || "").trim(),
+      email: String(form.email || "").trim().toLowerCase(),
+      telefone: telDigits || undefined,
+      tipo: String(form.tipo || "").trim() || undefined,
+      bloco: String(form.bloco || "").trim() || undefined,
+      apartamento: String(form.apartamento || "").trim() || undefined,
+    }
+    if (!payload.nome || !payload.email) {
+      setMsg("Nome e e-mail são obrigatórios.")
+      setMsgType("warn")
+      return
+    }
+    setIsCreating(true)
+    // Garante um frame para o loader aparecer
+    await new Promise((res) => setTimeout(res, 0))
+    const start = Date.now()
     try {
-      const telDigits = (String(form.telefone || "").match(/\d+/g) || []).join("")
-      const payload = {
-        nome: String(form.nome || "").trim(),
-        email: String(form.email || "").trim().toLowerCase(),
-        telefone: telDigits || undefined,
-        tipo: String(form.tipo || "").trim() || undefined,
-        bloco: String(form.bloco || "").trim() || undefined,
-        apartamento: String(form.apartamento || "").trim() || undefined,
-      }
-      if (!payload.nome || !payload.email) {
-        setMsg("Nome e e-mail são obrigatórios.")
-        setMsgType("warn")
-        return
-      }
       const r = await fetch("/api/moradores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       const j = await r.json().catch(() => null)
+      const elapsed = Date.now() - start
+      if (elapsed < 3000) {
+        await new Promise((res) => setTimeout(res, 3000 - elapsed))
+      }
       if (!r.ok) {
         if (j?.error === "EMAIL_JA_CADASTRADO") {
           setMsg("E-mail já cadastrado para outro usuário.")
@@ -225,16 +240,36 @@ export default function MoradoresPage() {
           setMsg(j?.detail ? `Falha ao criar: ${j.detail}` : (j?.error || "Falha ao criar"))
           setMsgType("error")
         }
+        setIsCreating(false)
         return
       }
-      setMsg("Morador cadastrado com sucesso.")
-      setMsgType("success")
+      // Mostrar mensagem de sucesso por 3 segundos
+      if (createMsgTimerRef.current) { clearTimeout(createMsgTimerRef.current); createMsgTimerRef.current = null }
+      setCreateMsg("Morador cadastrado com sucesso.")
+      createMsgTimerRef.current = setTimeout(() => {
+        setCreateMsg("")
+        createMsgTimerRef.current = null
+      }, 3000)
       setForm({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" })
+      setIsCreating(false)
     } catch {
+      const elapsed = Date.now() - start
+      if (elapsed < 3000) {
+        await new Promise((res) => setTimeout(res, 3000 - elapsed))
+      }
       setMsg("Erro ao criar morador.")
       setMsgType("error")
+      setIsCreating(false)
     }
   }
+
+  // Cleanup de timers ao desmontar
+  useEffect(() => {
+    return () => {
+      if (createMsgTimerRef.current) { clearTimeout(createMsgTimerRef.current); createMsgTimerRef.current = null }
+      if (updateMsgTimerRef.current) { clearTimeout(updateMsgTimerRef.current); updateMsgTimerRef.current = null }
+    }
+  }, [])
 
   const onUpdate = async () => {
     setMsg("")
@@ -262,14 +297,57 @@ export default function MoradoresPage() {
         }
         return
       }
-      setMsg("Morador atualizado com sucesso.")
-      setMsgType("success")
+      // Sucesso: manter filtros da busca, ir para a aba Buscar, atualizar resultados e mostrar mensagem por 3s
+      if (updateMsgTimerRef.current) { clearTimeout(updateMsgTimerRef.current); updateMsgTimerRef.current = null }
+      setUpdateMsg("")
+      setMsg("")
+      setMsgType(null)
+      setCreateMsg("")
+
+      // sair do modo edição e limpar formulário (não mexer nos filtros de busca)
       setIsEditing(false)
       setOriginalEmail(null)
-      if (tab === "buscar" && hasSearched) {
-        // Atualiza a lista se o usuário veio da aba de busca
-        handleSearch()
+      setForm({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" })
+
+      // ir para a aba Buscar
+      setTab("buscar")
+
+      // Atualizar resultados: se houver filtros, reexecuta a busca; senão, atualiza a lista atual em memória
+      const hadFilters = Boolean(searchEmail || searchNome || searchBloco || searchApto)
+      if (hadFilters) {
+        await handleSearch()
+      } else if (results && results.length) {
+        setResults((prev) => {
+          const list = Array.isArray(prev) ? [...prev] : []
+          const matchIndex = list.findIndex((m) => m.email === (originalEmail || payload.email))
+          const updatedItem = {
+            nome: payload.nome,
+            email: payload.email,
+            telefone: payload.telefone || undefined,
+            tipo: payload.tipo,
+            bloco: payload.bloco,
+            apartamento: payload.apartamento,
+          } as Morador
+          if (matchIndex >= 0) {
+            list[matchIndex] = updatedItem
+          } else {
+            // se não achar, inclui (cobre caso onde filtros estavam vazios e lista era de uma busca anterior)
+            list.unshift(updatedItem)
+          }
+          return list
+        })
+        setHasSearched(true)
+      } else {
+        // nenhuma lista preexistente; apenas marca como buscado para manter UX de lista
+        setHasSearched(true)
       }
+
+      // Mostrar mensagem de sucesso na aba Buscar por 3s
+      setSearchMsg("Morador atualizado com sucesso.")
+      updateMsgTimerRef.current = setTimeout(() => {
+        setSearchMsg("")
+        updateMsgTimerRef.current = null
+      }, 3000)
     } catch {
       setMsg("Erro ao atualizar morador.")
       setMsgType("error")
@@ -363,7 +441,7 @@ export default function MoradoresPage() {
                 role="tab"
                 aria-selected={tab === "cadastrar"}
                 className={`seg-btn ${tab === "cadastrar" ? "active" : ""}`}
-                onClick={() => setTab("cadastrar")}
+                onClick={() => { setTab("cadastrar"); setSearchMsg(""); }}
               >
                 Cadastrar
               </button>
@@ -371,7 +449,7 @@ export default function MoradoresPage() {
                 role="tab"
                 aria-selected={tab === "buscar"}
                 className={`seg-btn ${tab === "buscar" ? "active" : ""}`}
-                onClick={() => setTab("buscar")}
+                onClick={() => { setTab("buscar"); setCreateMsg(""); }}
               >
                 Buscar
               </button>
@@ -422,6 +500,10 @@ export default function MoradoresPage() {
                 </button>
               </div>
 
+              {searchMsg && (
+                <div className="inline-success" role="status" aria-live="polite">✅ {searchMsg}</div>
+              )}
+
               {/* Lista de resultados */}
               <div className="results">
                 {isSearching ? (
@@ -438,7 +520,7 @@ export default function MoradoresPage() {
                         <div className="result-main">
                           <div className="result-name">{m.nome}</div>
                           <div className="result-sub">{m.email}</div>
-                          <div className="result-sub">Bloco {m.bloco || "-"} • Apt {m.apartamento || "-"} • {m.tipo || "morador"}</div>
+                          <div className="result-sub">Bloco {m.bloco || "-"} • Apt {m.apartamento || "-"}</div>
                           {m.telefone && <div className="result-sub">{formatPhone(m.telefone)}</div>}
                         </div>
                         <div className="result-actions">
@@ -523,6 +605,7 @@ export default function MoradoresPage() {
                     type="button"
                     className="btn btn-crud btn-criar"
                     onClick={onCreate}
+                    disabled={isCreating}
                     style={{ padding: "0.45rem 0.9rem", display: "inline-flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}
                   >
                     Cadastrar
@@ -549,13 +632,30 @@ export default function MoradoresPage() {
                     <button
                       type="button"
                       className="btn btn-mini"
-                      onClick={() => { setIsEditing(false); setOriginalEmail(null); setForm({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" }) }}
+                      onClick={() => { setIsEditing(false); setOriginalEmail(null); setUpdateMsg(""); setForm({ nome: "", email: "", telefone: "", tipo: "", bloco: "", apartamento: "" }) }}
                     >
                       Cancelar
                     </button>
                   </>
                 )}
               </div>
+              {/* Inline "Cadastrando..." abaixo dos botões */}
+              {!isEditing && isCreating && (
+                <div className="loading creating-inline" role="status" aria-live="polite" aria-busy="true" style={{ marginTop: 8 }}>
+                  <span className="spinner" aria-hidden="true" />
+                  <span className="loading-text">Cadastrando...</span>
+                </div>
+              )}
+              {!isEditing && !isCreating && createMsg && (
+                <div className="inline-success" role="status" aria-live="polite" style={{ marginTop: 8, fontWeight: 400 }}>
+                  ✅ {createMsg}
+                </div>
+              )}
+              {isEditing && updateMsg && (
+                <div className="inline-success" role="status" aria-live="polite" style={{ marginTop: 8 }}>
+                  ✅ {updateMsg}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -586,6 +686,10 @@ export default function MoradoresPage() {
           </button>
         </nav>
       </div>
+
+      {/* Loader inline abaixo do botão Cadastrar */}
+      {/* Mantido fora do card para não quebrar a estrutura, mas visualmente aparece logo após o botão */}
+      {/* O contêiner é global; se preferir, posso mover para dentro do card. */}
 
       <style jsx>{`
         /* base */
@@ -743,6 +847,21 @@ export default function MoradoresPage() {
           animation: spin 0.6s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Loader inline para Cadastrando... (reutiliza o estilo de Buscando...) */
+        .creating-inline { justify-content: center; }
+
+        /* Mensagem de sucesso inline (abaixo dos botões) */
+        .inline-success {
+          background: #ecfdf5; /* green-50 */
+          border: 1px solid #a7f3d0; /* green-200 */
+          color: #065f46; /* green-800 */
+          text-align: center;
+          padding: 10px 12px;
+          border-radius: 12px;
+          font-weight: 600;
+          margin-top: 8px;
+        }
       `}</style>
 
       {/* Confirm deletion dialog */}
