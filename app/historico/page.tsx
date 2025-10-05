@@ -19,11 +19,14 @@ interface Encomenda {
   dataRetirada?: string
 }
 
-// Capitaliza a primeira letra não-espaço
+// Capitaliza a primeira letra de cada palavra (suporta hífen) e normaliza restante em minúsculas
 const capFirst = (s: string) => {
-  const i = s.search(/\S/)
-  if (i === -1) return ""
-  return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
+  const toTitle = (w: string) => (w ? w.charAt(0).toLocaleUpperCase("pt-BR") + w.slice(1) : w)
+  return (s || "")
+    .toLowerCase()
+    .split(/(\s+)/) // preserva espaços
+    .map((tok) => (tok.trim() === "" ? tok : tok.split("-").map(toTitle).join("-")))
+    .join("")
 }
 
 // >>> novo: formata "YYYY-MM" para "Mês Ano"
@@ -81,6 +84,9 @@ export default function HistoricoPage() {
   const helloRef = useRef<HTMLSpanElement | null>(null)       // novo
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
+  const [showPickupPopup, setShowPickupPopup] = useState(false)
+  const [lastRetiradoPor, setLastRetiradoPor] = useState("")
+  const pickupStartRef = useRef<number | null>(null)
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
@@ -175,6 +181,30 @@ export default function HistoricoPage() {
       <AdminGate />
       <div className="container" ref={containerRef}>
         <div className="main-content">
+          {showPickupPopup && (
+            <div
+              className="pickup-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="retirada-ok-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  const t0 = pickupStartRef.current ?? 0
+                  if (Date.now() - t0 >= 4000) setShowPickupPopup(false)
+                }
+              }}
+            >
+              <div className="pickup-card" role="document">
+                <div className="pickup-scene" aria-hidden="true">
+                  <span className="pickup-box">📦</span>
+                  <span className="pickup-hand">🫴🏼</span>
+                  <span className="pickup-check">✅</span>
+                </div>
+                <h3 id="retirada-ok-title" className="pickup-title">Retirada confirmada!</h3>
+                <p className="pickup-small">Retirado por {lastRetiradoPor}</p>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
@@ -367,6 +397,15 @@ export default function HistoricoPage() {
                               localStorage.setItem("historico_encomendas", JSON.stringify(novas))
                               setShowInputId(null)
                               setNomeRetirada("")
+                              // guardar quem retirou para mostrar no popup
+                              setLastRetiradoPor(String(data?.nome_retirou || nome))
+                              // Mostrar pop-up animado (caixa sendo puxada e check) por 3s
+                              pickupStartRef.current = Date.now()
+                              setShowPickupPopup(true)
+                              setTimeout(() => {
+                                setShowPickupPopup(false)
+                                pickupStartRef.current = null
+                              }, 4000)
                             } catch (err: any) {
                               alert(err?.message || "Falha ao confirmar retirada")
                             } finally {
@@ -493,6 +532,33 @@ export default function HistoricoPage() {
         /* Espaçamento mais justo entre filtros no Histórico */
         #historico-filtros .form-group { margin-bottom: 4px; }
         #historico-filtros .form-label { margin-bottom: 2px; display: inline-block; }
+
+        /* Popup de retirada confirmada */
+        .pickup-overlay {
+          position: fixed; inset: 0; z-index: 1100;
+          background: rgba(15, 23, 42, 0.45);
+          display: flex; align-items: center; justify-content: center;
+          animation: overlayFade .18s ease-out;
+        }
+        .pickup-card {
+          position: relative; width: min(520px, 92vw);
+          background: #ffffff; border-radius: 16px;
+          padding: 22px 18px 16px; text-align: center;
+          border: 1px solid rgba(2,132,199,.25);
+          box-shadow: 0 30px 80px rgba(2,132,199,.25), 0 8px 24px rgba(15,23,42,.18);
+          animation: cardPop .22s cubic-bezier(.18,.89,.32,1.28);
+        }
+  .pickup-title { margin: 8px 0 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+  .pickup-small { margin: 0 0 12px; font-size: 13px; color: #334155; }
+  .pickup-scene { position: relative; height: 140px; overflow: hidden; margin-bottom: 4px; }
+  .pickup-box { position: absolute; z-index: 1; font-size: 56px; left: 50%; top: 10px; transform: translateX(60px); filter: drop-shadow(0 6px 12px rgba(2,132,199,.25)); animation: dragBox 2s ease-in-out forwards; }
+  .pickup-hand { position: absolute; z-index: 0; font-size: 44px; left: 50%; top: 62px; transform: translateX(60px); animation: handMove 2s ease-in-out forwards; }
+  .pickup-check { position: absolute; z-index: 2; font-size: 42px; left: 50%; top: 0px; transform: translate(-50%, 0) scale(.6); opacity: 0; animation: checkPop .5s ease-out forwards; animation-delay: 1.5s; }
+        @keyframes dragBox { 0% { transform: translateX(60px) } 60% { transform: translateX(-20px) } 100% { transform: translateX(-60px) } }
+  @keyframes handMove { 0% { transform: translateX(60px) } 60% { transform: translateX(-20px) } 100% { transform: translateX(-60px) } }
+        @keyframes checkPop { from { opacity: 0; transform: translate(-50%,0) scale(.6) } to { opacity: 1; transform: translate(-50%,0) scale(1) } }
+        @keyframes overlayFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes cardPop { from { transform: scale(.92); opacity: .6 } to { transform: scale(1); opacity: 1 } }
       `}</style>
     </>
   )
