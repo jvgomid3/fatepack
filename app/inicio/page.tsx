@@ -17,6 +17,7 @@ export default function InicioPage() {
   const [userEmail, setUserEmail] = useState<string>("")
   const [moradores, setMoradores] = useState<Array<{ nome: string; telefone?: string; tipo?: string }>>([])
   const [pendingCount, setPendingCount] = useState<number>(0)
+  const [activeAviso, setActiveAviso] = useState<null | { id_aviso: number; titulo: string; mensagem: string; inicio: string; fim: string }>(null)
   // data exemplo para aviso do condomínio (3 dias à frente)
   const energyAlertDate = (() => {
     const d = new Date()
@@ -153,6 +154,25 @@ export default function InicioPage() {
     return () => clearInterval(id)
   }, [])
 
+  // carrega aviso ativo do condomínio (apenas para moradores)
+  useEffect(() => {
+    const loadAviso = async () => {
+      try {
+        const t = (localStorage.getItem("userType") || "").toLowerCase()
+        if (t === "admin") { setActiveAviso(null); return }
+        const res = await fetch(`/api/aviso?active=1&ts=${Date.now()}`, { cache: "no-store" })
+        const j = await res.json().catch(() => null)
+        if (res.ok && j?.aviso) setActiveAviso(j.aviso)
+        else setActiveAviso(null)
+      } catch {
+        setActiveAviso(null)
+      }
+    }
+    loadAviso()
+    const id = setInterval(loadAviso, 60000)
+    return () => clearInterval(id)
+  }, [])
+
   // carrega moradores do mesmo bloco/apto
   useEffect(() => {
     const loadMoradores = async () => {
@@ -276,13 +296,23 @@ export default function InicioPage() {
               <h2 className="section-title alertas-title" style={{ fontSize: 18, margin: 0, fontWeight: 800 }}>Alertas e Notificações</h2>
             </div>
             <div className="alerts-list">
-              <div className="alert-item">
-                <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
-                <div className="alert-main">
-                  <div className="alert-title">Aviso do condomínio</div>
-                  <div className="alert-desc">Informamos que no dia {energyAlertDate} ficaremos sem energia no condomínio.</div>
+              {activeAviso ? (
+                <div className="alert-item">
+                  <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
+                  <div className="alert-main">
+                    <div className="alert-title">{activeAviso.titulo || "Aviso do condomínio"}</div>
+                    <div className="alert-desc">{activeAviso.mensagem || ""}</div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="alert-item">
+                  <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
+                  <div className="alert-main">
+                    <div className="alert-title">Aviso do condomínio</div>
+                    <div className="alert-desc">Sem avisos no momento.</div>
+                  </div>
+                </div>
+              )}
 
               {pendingCount > 0 && (
                 <div className="alert-item new-package" style={{ position: "relative" }} onClick={() => router.push("/encomendas")}>

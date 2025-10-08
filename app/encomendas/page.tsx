@@ -277,7 +277,7 @@ export default function EncomendasPage() {
                   value={mesFiltro}
                   onChange={(e) => setMesFiltro(e.target.value)}
                 >
-                  <option value="">Todos os meses</option>
+                  <option value="">Todos</option>
                   {mesesDisponiveis.map((key) => (
                     <option key={key} value={key}>{formatMonthLabel(key)}</option>
                   ))}
@@ -515,7 +515,7 @@ function PackageCard({
               <span className="badge" title="Pendente" style={{ backgroundColor: "#f59e0b", color: "#111827" }}>PENDENTE</span>
               {pendingLabel != null && (
                 <div style={{ color: "#334155", fontSize: 13, fontWeight: 700, lineHeight: 1.1, textAlign: "right" }}>
-                  ⏰ Há {pendingLabel} {pendingDays === 1 ? "dia" : "dias"}
+                  {pendingDays === 0 ? "🕒 Hoje" : `🕒 Há ${pendingLabel} ${pendingDays === 1 ? "dia" : "dias"}`}
                 </div>
               )}
             </>

@@ -29,7 +29,7 @@ const capFirst = (s: string) => {
     .join("")
 }
 
-// >>> novo: formata "YYYY-MM" para "Mês Ano"
+// >>> novo: formata "YYYY-MM" para "Mês/Ano"
 const formatarMes = (ym: string) => {
   const [ano, mes] = ym.split("-")
   const nomes = [
@@ -38,7 +38,7 @@ const formatarMes = (ym: string) => {
   ]
   const idx = Number(mes)
   if (!ano || !idx || idx < 1 || idx > 12) return ym
-  return `${nomes[idx - 1]} ${ano}`
+  return `${nomes[idx - 1]}/${ano}`
 }
 
 // formata "YYYY-MM-DDTHH:mm:ssZ" -> "DD/MM/YYYY HH:mm"
@@ -67,7 +67,12 @@ export default function HistoricoPage() {
 
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
-  const [filtroMes, setFiltroMes] = useState("")
+  const [filtroMes, setFiltroMes] = useState(() => {
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, "0")
+    return `${yyyy}-${mm}`
+  })
   const [filtroBloco, setFiltroBloco] = useState("")
   const [filtroApto, setFiltroApto] = useState("")
   const [mesesDisponiveis, setMesesDisponiveis] = useState<string[]>([])
@@ -158,6 +163,40 @@ export default function HistoricoPage() {
     return () => clearInterval(id)
   }, [])
 
+  // Helper: extrai chave AAAA-MM a partir de dataRecebimento ("DD/MM/AAAA HH:mm" ou ISO)
+  const monthKeyFromDate = (value?: string) => {
+    if (!value) return ""
+    const s = String(value)
+    // tenta regex BR
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+    if (m) {
+      const yyyy = m[3]
+      const mm = m[2]
+      return `${yyyy}-${mm}`
+    }
+    // fallback Date
+    const d = new Date(s)
+    if (isNaN(d.getTime())) return ""
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    return `${yyyy}-${mm}`
+  }
+
+  // Deriva meses disponíveis a partir das encomendas carregadas
+  useEffect(() => {
+    const set = new Set<string>()
+    encomendas.forEach((e) => {
+      const k = monthKeyFromDate(e.dataRecebimento)
+      if (k) set.add(k)
+    })
+    let arr = Array.from(set).sort((a, b) => b.localeCompare(a))
+    // garante que o mês atual exista na lista para ser selecionável por padrão
+    const now = new Date()
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    if (!arr.includes(currentKey)) arr = [currentKey, ...arr]
+    setMesesDisponiveis(arr)
+  }, [encomendas])
+
   // opções (derivadas do resultado atual, incluindo dependência Bloco -> Apt)
   const empresasUnicas = [...new Set(encomendas.map((e) => e.empresa))].sort()
   const blocosUnicos = [...new Set(encomendas.map((e) => e.bloco))].sort()
@@ -173,8 +212,18 @@ export default function HistoricoPage() {
     setFiltroApto("")
   }
 
-  // lista final considerando o filtro de pendentes
-  const listaFiltrada = onlyPending ? encomendas.filter((e) => !e.entregue) : encomendas
+  // lista final considerando todos os filtros
+  const base = onlyPending ? encomendas.filter((e) => !e.entregue) : encomendas
+  const listaFiltrada = base.filter((e) => {
+    if (filtroBloco && e.bloco !== filtroBloco) return false
+    if (filtroApto && e.apartamento !== filtroApto) return false
+    if (filtroEmpresa && e.empresa !== filtroEmpresa) return false
+    if (filtroMes) {
+      const k = monthKeyFromDate(e.dataRecebimento)
+      if (k !== filtroMes) return false
+    }
+    return true
+  })
 
   return (
     <>
