@@ -2,7 +2,7 @@ export const runtime = "nodejs"
 
 import "server-only"
 import { NextResponse } from "next/server"
-import { supabase } from "../../../lib/supabaseClient"
+import { getSupabaseClient } from "../../../lib/supabaseClient"
 import bcrypt from "bcryptjs"
 import { signToken } from "../../../lib/server/auth"
 
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     }
 
     // tenta por email primeiro
+    const supabase = getSupabaseClient()
     let result = await supabase
       .from("usuario")
       .select("*")

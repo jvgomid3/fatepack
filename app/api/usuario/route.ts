@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabase } from "../../../lib/supabaseClient"
+import { getSupabaseClient } from "../../../lib/supabaseClient"
 
 export const dynamic = "force-dynamic"
 
@@ -10,6 +10,7 @@ export async function GET(req: Request) {
   if (!email && !nome) return NextResponse.json({ error: "Informe email ou nome" }, { status: 400 })
 
   try {
+    const supabase = getSupabaseClient()
     if (email) {
       const { data, error, status } = await supabase
         .from("usuario")

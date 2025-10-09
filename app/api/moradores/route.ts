@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabase } from "../../../lib/supabaseClient"
+import { getSupabaseClient } from "../../../lib/supabaseClient"
 import { createClient } from "@supabase/supabase-js"
 import bcrypt from "bcryptjs"
 
@@ -29,6 +29,7 @@ export async function GET(req: Request) {
     // aceita tanto "apartamento" quanto "apto" na query
     const apartamento = sanitizeStr(url.searchParams.get("apartamento") || url.searchParams.get("apto"))
 
+    const supabase = getSupabaseClient()
     let query = supabase
       .from("usuario")
       .select("nome, email, telefone, tipo, bloco, apto")
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
     const supaUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const client = adminKey && supaUrl
       ? createClient(supaUrl, adminKey, { auth: { persistSession: false } })
-      : supabase
+      : getSupabaseClient()
 
     const { data, error } = await client
       .from("usuario")
@@ -252,7 +253,7 @@ export async function PUT(req: Request) {
       toUpdate.email = newEmail
     }
 
-    const { data, error, status } = await supabase
+    const { data, error, status } = await getSupabaseClient()
       .from("usuario")
       .update(toUpdate)
       .eq("email", identifierEmail)
@@ -303,7 +304,7 @@ export async function DELETE(req: Request) {
     const supaUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const client = adminKey && supaUrl
       ? createClient(supaUrl, adminKey, { auth: { persistSession: false } })
-      : supabase
+      : getSupabaseClient()
 
     // 1) Descobre o id_usuario pelo e-mail (case-sensitive depois case-insensitive)
     let userId: number | null = null
