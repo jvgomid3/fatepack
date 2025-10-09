@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { supabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 
 const TABLE = "aviso"
 
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const activeParam = searchParams.get("active")
     if (activeParam === "1") {
       const now = nowInSaoPauloTimestamp()
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await getSupabaseAdmin()
         .from(TABLE)
         .select("id_aviso, titulo, mensagem, inicio, fim")
         .lte("inicio", now)
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       return new Response(JSON.stringify({ aviso: data?.[0] || null }), { status: 200 })
     } else if (activeParam === "all") {
       const now = nowInSaoPauloTimestamp()
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await getSupabaseAdmin()
         .from(TABLE)
         .select("id_aviso, titulo, mensagem, inicio, fim")
         .lte("inicio", now)
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       return new Response(JSON.stringify({ avisos: data || [] }), { status: 200 })
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from(TABLE)
       .select("id_aviso, titulo, mensagem, inicio, fim")
       .order("inicio", { ascending: false })
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const inicio = nowInSaoPauloTimestamp()
     const fim = localInputToTimestamp(fimInput)
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from(TABLE)
       .insert([{ titulo, mensagem, inicio, fim }])
       .select("id_aviso, titulo, mensagem, inicio, fim")
@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest) {
     if (action === "deactivate") {
       // Define fim para agora (Sao Paulo). Para efeito imediato no cliente, retornamos o registro atualizado.
       const fim = nowInSaoPauloTimestamp()
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await getSupabaseAdmin()
         .from(TABLE)
         .update({ fim })
         .eq("id_aviso", id)
@@ -129,7 +129,7 @@ export async function PATCH(req: NextRequest) {
       return new Response(JSON.stringify({ error: "Nada para atualizar" }), { status: 400 })
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from(TABLE)
       .update(patch)
       .eq("id_aviso", id)

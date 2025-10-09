@@ -2,7 +2,7 @@ export const runtime = "nodejs"
 
 import { NextResponse } from "next/server"
 import { getUserFromRequest } from "../../../lib/server/auth"
-import { supabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 
 const TABLE = "encomenda"
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       retirada:retirada!retirada_id_encomenda_fkey(id_retirada, nome_retirou, data_retirada)`
 
     if (isAdmin) {
-      const { data, error } = await supabaseAdmin
+        const { data, error } = await getSupabaseAdmin()
         .from(TABLE)
         .select(baseSelect)
         .order("data_recebimento", { ascending: false, nullsFirst: false })
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     // Implementa janela de visibilidade via usuario_apartamento (data_entrada/data_saida)
     const userId = Number(user.id)
     // 1) Buscar vínculos do usuário
-    const { data: vinculos, error: errUa } = await supabaseAdmin
+    const { data: vinculos, error: errUa } = await getSupabaseAdmin()
       .from("usuario_apartamento")
       .select("id_apartamento, data_entrada, data_saida")
       .eq("id_usuario", userId)
@@ -77,7 +77,7 @@ export async function GET(req: Request) {
     }
 
     // 2) Buscar encomendas desses apartamentos e ordenar
-    const { data: encomendas, error: errEnc } = await supabaseAdmin
+    const { data: encomendas, error: errEnc } = await getSupabaseAdmin()
       .from(TABLE)
       .select(baseSelect)
       .in("id_apartamento", aptoIds)
@@ -126,7 +126,7 @@ export async function GET(req: Request) {
 
 async function findIdApartamento(bloco: string, apt: string) {
   // tenta encontrar via bloco.nome e apartamento.numero
-  const { data: b, error: eb } = await supabaseAdmin
+    const { data: b, error: eb } = await getSupabaseAdmin()
     .from("bloco")
     .select("id_bloco, nome")
     .or(`nome.eq.${bloco},nome.eq.${String(Number(bloco))}`)
@@ -135,7 +135,7 @@ async function findIdApartamento(bloco: string, apt: string) {
   if (eb) throw eb
   if (!b) return null
 
-  const { data: a, error: ea } = await supabaseAdmin
+  const { data: a, error: ea } = await getSupabaseAdmin()
     .from("apartamento")
     .select("id_apartamento, numero, id_bloco")
     .eq("id_bloco", b.id_bloco)
@@ -173,7 +173,7 @@ export async function POST(req: Request) {
     let idApto = await findIdApartamento(bloco, apartamento)
     // Fallback: tenta resolver via usuario_apartamento (caso bloco/apartamento estejam inconsistentes)
     if (!idApto) {
-      const { data: ulist, error: eul } = await supabaseAdmin
+      const { data: ulist, error: eul } = await getSupabaseAdmin()
         .from("usuario")
         .select("id_usuario")
         .in("bloco", [bloco, String(Number(bloco))])
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
       if (eul) throw eul
       const uId = ulist && ulist.length ? ulist[0].id_usuario : null
       if (uId) {
-        const { data: ua, error: eua } = await supabaseAdmin
+        const { data: ua, error: eua } = await getSupabaseAdmin()
           .from("usuario_apartamento")
           .select("id_apartamento")
           .eq("id_usuario", uId)
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
     }
 
     // Resolve destinatário via usuario_apartamento
-    const { data: uaRows, error: erUa } = await supabaseAdmin
+    const { data: uaRows, error: erUa } = await getSupabaseAdmin()
       .from("usuario_apartamento")
       .select("id_usuario")
       .eq("id_apartamento", idApto)
@@ -212,7 +212,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { data: users, error: erUsers } = await supabaseAdmin
+    const { data: users, error: erUsers } = await getSupabaseAdmin()
       .from("usuario")
       .select("id_usuario, nome")
       .in("id_usuario", residentIds)
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { data: inserted, error: ei } = await supabaseAdmin
+    const { data: inserted, error: ei } = await getSupabaseAdmin()
       .from(TABLE)
       .insert({
         empresa_entrega: empresa,

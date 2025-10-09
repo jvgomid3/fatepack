@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 
 export const dynamic = "force-dynamic"
 
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     const ts = nowInSaoPauloISO()
 
     // Insere no Supabase
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from("retirada")
       .insert({ id_encomenda, nome_retirou, data_retirada: ts })
       .select("id_retirada, id_encomenda, nome_retirou, data_retirada")
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from("retirada")
       .select("id_retirada, id_encomenda, nome_retirou, data_retirada")
       .order("data_retirada", { ascending: false })
