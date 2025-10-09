@@ -3,11 +3,10 @@
 import React, { useEffect, useState, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Mail, UserRound, ClipboardList, Home, Package, LogOut } from "lucide-react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function InicioPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const [userName, setUserName] = useState<string | null>(null)
   const [userType, setUserType] = useState<string>("")
@@ -91,7 +90,7 @@ export default function InicioPage() {
     } catch {
       /* ignore */
     }
-  }, [searchParams])
+  }, [])
 
   // medição do container para nav (mantém comportamento antigo)
   useEffect(() => {
