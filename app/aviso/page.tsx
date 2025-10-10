@@ -373,12 +373,12 @@ export default function AvisoPage() {
           }}
         >
           <Link href="/registrar" className="nav-item" title="Registrar">
-            <Package className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">📦</span>
             <span className="nav-label">Registrar</span>
           </Link>
 
           <Link href="/historico" className="nav-item" title="Histórico">
-            <History className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">🕒</span>
             <span className="nav-label">Histórico</span>
           </Link>
 
@@ -396,7 +396,7 @@ export default function AvisoPage() {
             aria-label="Sair"
             title="Sair"
           >
-            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">↩️</span>
             <span className="nav-label">Sair</span>
           </button>
         </nav>
@@ -417,7 +417,7 @@ export default function AvisoPage() {
         }
         #aviso-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 4px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }

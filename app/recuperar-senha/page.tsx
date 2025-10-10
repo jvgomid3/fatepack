@@ -179,7 +179,7 @@ export default function RecuperarSenhaPage() {
             {/* Etapa 1: Verificar e-mail */}
             {step === "verify" && (
               <form onSubmit={handleVerify}>
-                <div className="form-group">
+                <div className="form-group form-group--tight">
                   <label>E-mail:</label>
                   <input
                     id="email"
@@ -218,7 +218,7 @@ export default function RecuperarSenhaPage() {
             {/* Etapa 3: Inserir código recebido */}
             {step === "code" && (
               <form onSubmit={handleValidateCode}>
-                <div className="form-group">
+                <div className="form-group form-group--tight">
                   <label>Código: </label>
                   <input
                     type="text"
@@ -352,6 +352,14 @@ export default function RecuperarSenhaPage() {
            font-size: 15px;
            box-sizing: border-box;
            max-width: calc(100% - 0px);
+         }
+         /* versão "ajustada": label do tamanho do texto e um espacinho padrão */
+         .form-group--tight { gap: 8px; }
+         .form-group--tight label {
+           width: auto;
+           min-width: 0;
+           padding-right: 8px;
+           white-space: nowrap;
          }
          .btn { padding: 12px; border-radius: 8px; font-size: 15px; }
 

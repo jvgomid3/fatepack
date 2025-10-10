@@ -3,6 +3,7 @@ export const runtime = "nodejs"
 import { NextResponse } from "next/server"
 import { getUserFromRequest } from "../../../lib/server/auth"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { sendPush } from "../../../lib/server/push"
 
 const TABLE = "encomenda"
 
@@ -238,7 +239,8 @@ export async function POST(req: Request) {
       )
     }
 
-    const { data: inserted, error: ei } = await getSupabaseAdmin()
+    const supa = getSupabaseAdmin()
+    const { data: inserted, error: ei } = await supa
       .from(TABLE)
       .insert({
         empresa_entrega: empresa,
@@ -253,6 +255,28 @@ export async function POST(req: Request) {
       .select("id_encomenda")
       .single()
     if (ei) throw ei
+    // Fire-and-forget: notify all residents of this apartment that a new parcel arrived
+    try {
+      const { data: subs, error: es } = await supa
+        .from("push_subscription")
+        .select("endpoint, p256dh, auth, user_id")
+        .in("user_id", residentIds)
+      if (!es && Array.isArray(subs) && subs.length) {
+        const payload = {
+          title: "📦 Nova encomenda",
+          body: `Você recebeu uma nova encomenda para o Apto ${apartamento}.`,
+          url: "/encomendas",
+          tag: "new-encomenda",
+        }
+        await Promise.allSettled(
+          subs.map((s: any) =>
+            sendPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+          )
+        )
+      }
+    } catch (notifyErr) {
+      // ignore push errors
+    }
     return NextResponse.json({ ok: true, id: inserted?.id_encomenda, destinatario })
   } catch (e: any) {
     console.error("POST /api/encomendas:", e?.message)

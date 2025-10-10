@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { supabase } from "../../../lib/supabaseClient"
+import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
 
     // Atualiza no Supabase pela coluna email (case-sensitive).
     // Emails são salvos em minúsculo no app; se necessário, converta seu dataset.
+    const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from("usuario")
       .update({ senha_hash: hash })

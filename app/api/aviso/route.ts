@@ -1,5 +1,8 @@
+export const runtime = "nodejs"
+
 import { NextRequest } from "next/server"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { sendPush } from "../../../lib/server/push"
 
 const TABLE = "aviso"
 
@@ -87,12 +90,30 @@ export async function POST(req: NextRequest) {
     const inicio = nowInSaoPauloTimestamp()
     const fim = localInputToTimestamp(fimInput)
 
-    const { data, error } = await getSupabaseAdmin()
+    const supa = getSupabaseAdmin()
+    const { data, error } = await supa
       .from(TABLE)
       .insert([{ titulo, mensagem, inicio, fim }])
       .select("id_aviso, titulo, mensagem, inicio, fim")
       .single()
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    // Broadcast push notification to all subscribers
+    try {
+      const { data: subs, error: es } = await supa
+        .from("push_subscription")
+        .select("endpoint, p256dh, auth")
+      if (!es && Array.isArray(subs) && subs.length) {
+        const payload = {
+          title: "⚠️ Novo aviso",
+          body: titulo,
+          url: "/inicio",
+          tag: "new-aviso",
+        }
+        await Promise.allSettled(
+          subs.map((s: any) => sendPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload))
+        )
+      }
+    } catch {}
     return new Response(JSON.stringify({ aviso: data }), { status: 201 })
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message || "POST failed" }), { status: 500 })

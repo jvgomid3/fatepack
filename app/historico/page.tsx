@@ -520,7 +520,7 @@ export default function HistoricoPage() {
           }}
         >
           <Link href="/registrar" className="nav-item" title="Registrar">
-            <Package className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">📦</span>
             <span className="nav-label">Registrar</span>
           </Link>
 
@@ -532,7 +532,7 @@ export default function HistoricoPage() {
           )}
 
           <Link href="/aviso" className="nav-item" title="Aviso">
-            <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">⚠️</span>
             <span className="nav-label">Aviso</span>
           </Link>
 
@@ -543,7 +543,7 @@ export default function HistoricoPage() {
             aria-label="Sair"
             title="Sair"
           >
-            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">↩️</span>
             <span className="nav-label">Sair</span>
           </button>
         </nav>
@@ -564,7 +564,7 @@ export default function HistoricoPage() {
         }
         #historico-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 4px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }

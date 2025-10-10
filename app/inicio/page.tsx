@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { Mail, UserRound, ClipboardList, Home, Package, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { enablePushNotifications } from "../../lib/pushClient"
 
 export default function InicioPage() {
   const router = useRouter()
@@ -16,7 +17,7 @@ export default function InicioPage() {
   const [userEmail, setUserEmail] = useState<string>("")
   const [moradores, setMoradores] = useState<Array<{ nome: string; telefone?: string; tipo?: string }>>([])
   const [pendingCount, setPendingCount] = useState<number>(0)
-  const [activeAviso, setActiveAviso] = useState<null | { id_aviso: number; titulo: string; mensagem: string; inicio: string; fim: string }>(null)
+  const [activeAvisos, setActiveAvisos] = useState<Array<{ id_aviso: number; titulo: string; mensagem: string; inicio: string; fim: string }>>([])
   // data exemplo para aviso do condomínio (3 dias à frente)
   const energyAlertDate = (() => {
     const d = new Date()
@@ -26,6 +27,7 @@ export default function InicioPage() {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState({ left: 0, width: 0 })
   const [mounted, setMounted] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState<boolean>(false)
 
   // logout copiado da /encomendas: limpa storage e faz replace + redirect
   const logout = () => {
@@ -107,6 +109,15 @@ export default function InicioPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // One-time check if push is already enabled
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!('serviceWorker' in navigator)) return
+    navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => {
+      setPushEnabled(!!sub)
+    }).catch(() => {})
+  }, [])
+
   // Se detectar admin aqui, desloga e volta à home sem alterar a ordem de hooks
   useEffect(() => {
     try {
@@ -153,22 +164,22 @@ export default function InicioPage() {
     return () => clearInterval(id)
   }, [])
 
-  // carrega aviso ativo do condomínio (apenas para moradores)
+  // carrega avisos ativos do condomínio (apenas para moradores)
   useEffect(() => {
-    const loadAviso = async () => {
+    const loadAvisos = async () => {
       try {
         const t = (localStorage.getItem("userType") || "").toLowerCase()
-        if (t === "admin") { setActiveAviso(null); return }
-        const res = await fetch(`/api/aviso?active=1&ts=${Date.now()}`, { cache: "no-store" })
+        if (t === "admin") { setActiveAvisos([]); return }
+        const res = await fetch(`/api/aviso?active=all&ts=${Date.now()}`, { cache: "no-store" })
         const j = await res.json().catch(() => null)
-        if (res.ok && j?.aviso) setActiveAviso(j.aviso)
-        else setActiveAviso(null)
+        if (res.ok && Array.isArray(j?.avisos)) setActiveAvisos(j.avisos)
+        else setActiveAvisos([])
       } catch {
-        setActiveAviso(null)
+        setActiveAvisos([])
       }
     }
-    loadAviso()
-    const id = setInterval(loadAviso, 60000)
+    loadAvisos()
+    const id = setInterval(loadAvisos, 60000)
     return () => clearInterval(id)
   }, [])
 
@@ -215,6 +226,28 @@ export default function InicioPage() {
         <div className="header" style={{ position: "relative", marginTop: 42 }}>
           <h1>Olá, {userName ? String(userName).split(" ")[0] : "Usuário"}!</h1>
           <p>Bem-vindo ao FatePack!</p>
+          {/* Lightweight CTA to enable push notifications for residents */}
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={async () => {
+                const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+                const res = await enablePushNotifications(getToken)
+                if (res.ok) setPushEnabled(true)
+              }}
+              disabled={pushEnabled}
+              style={{
+                fontSize: 12,
+                padding: '6px 10px',
+                borderRadius: 6,
+                background: pushEnabled ? '#16a34a' : '#06b6d4',
+                color: 'white',
+                border: 'none',
+                cursor: pushEnabled ? 'default' : 'pointer',
+              }}
+            >
+              {pushEnabled ? 'Notificações ativas' : 'Ativar notificações'}
+            </button>
+          </div>
         </div>
 
         <div className="main-content">
@@ -295,14 +328,16 @@ export default function InicioPage() {
               <h2 className="section-title alertas-title" style={{ fontSize: 18, margin: 0, fontWeight: 800 }}>Alertas e Notificações</h2>
             </div>
             <div className="alerts-list">
-              {activeAviso ? (
-                <div className="alert-item">
-                  <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
-                  <div className="alert-main">
-                    <div className="alert-title">{activeAviso.titulo || "Aviso do condomínio"}</div>
-                    <div className="alert-desc">{activeAviso.mensagem || ""}</div>
+              {activeAvisos && activeAvisos.length > 0 ? (
+                activeAvisos.map((av) => (
+                  <div className="alert-item" key={av.id_aviso}>
+                    <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
+                    <div className="alert-main">
+                      <div className="alert-title">{av.titulo || "Aviso do condomínio"}</div>
+                      <div className="alert-desc">{av.mensagem || ""}</div>
+                    </div>
                   </div>
-                </div>
+                ))
               ) : (
                 <div className="alert-item">
                   <div className="alert-icon" style={{ background: "#fff0d6" }} aria-hidden="true">⚠️</div>
@@ -347,7 +382,7 @@ export default function InicioPage() {
             {userType !== "admin" ? (
               <>
                 <Link href="/encomendas" className="nav-item" title="Encomendas">
-                  <Package className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">📦</span>
                   <span className="nav-label">Encomendas</span>
                 </Link>
                 <button
@@ -357,7 +392,7 @@ export default function InicioPage() {
                   aria-label="Sair"
                   title="Sair"
                 >
-                  <LogOut className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">↩️</span>
                   <span className="nav-label">Sair</span>
                 </button>
               </>
@@ -368,7 +403,7 @@ export default function InicioPage() {
                   <span className="nav-label">Perfil</span>
                 </Link>
                 <Link href="/encomendas" className="nav-item" title="Encomendas">
-                  <Package className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">📦</span>
                   <span className="nav-label">Encomendas</span>
                 </Link>
                 <button
@@ -378,7 +413,7 @@ export default function InicioPage() {
                   aria-label="Sair"
                   title="Sair"
                 >
-                  <LogOut className="nav-icon-svg" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">↩️</span>
                   <span className="nav-label">Sair</span>
                 </button>
               </>

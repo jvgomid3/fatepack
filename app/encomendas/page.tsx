@@ -357,7 +357,7 @@ export default function EncomendasPage() {
         >
           {!isAdmin && (
             <Link href="/inicio" className="nav-item" title="Inicio">
-              <Home className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-icon" aria-hidden="true">🏠</span>
               <span className="nav-label">Inicio</span>
             </Link>
           )}
@@ -369,7 +369,7 @@ export default function EncomendasPage() {
             aria-label="Sair"
             title="Sair"
           >
-            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">↩️</span>
             <span className="nav-label">Sair</span>
           </button>
         </nav>
@@ -392,7 +392,7 @@ export default function EncomendasPage() {
         }
         #encomendas-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 4px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }

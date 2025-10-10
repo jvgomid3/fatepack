@@ -62,3 +62,22 @@ COMMIT;
 -- Observação:
 -- - Após rodar este script, novos INSERTs em public.usuario não devem fornecer id_usuario;
 --   o banco gerará automaticamente um novo id sequencial (max+1).
+
+-- Tabela para armazenar inscrições de Web Push por usuário
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='push_subscription'
+	) THEN
+		CREATE TABLE public.push_subscription (
+			id bigserial PRIMARY KEY,
+			user_id bigint NOT NULL REFERENCES public.usuario(id_usuario) ON DELETE CASCADE,
+			endpoint text NOT NULL,
+			p256dh text NOT NULL,
+			auth text NOT NULL,
+			created_at timestamptz NOT NULL DEFAULT now()
+		);
+		CREATE UNIQUE INDEX push_subscription_user_endpoint_uniq ON public.push_subscription(user_id, endpoint);
+	END IF;
+END $$;
+

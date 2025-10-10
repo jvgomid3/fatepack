@@ -465,7 +465,7 @@ export default function MoradoresPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Nome</label>
-                  <input className="form-input" type="text" value={searchNome} onChange={(e) => setSearchNome(e.target.value)} placeholder="Maria Silva" />
+                  <input className="form-input" type="text" value={searchNome} onChange={(e) => setSearchNome(capFirst(e.target.value))} placeholder="Maria Silva" />
                 </div>
               </div>
               <div className="form-row">
@@ -666,22 +666,22 @@ export default function MoradoresPage() {
           style={{ left: 0, right: 0, transform: "none", width: "100%" }}
         >
           <Link href="/registrar" className="nav-item" title="Registrar">
-            <Package className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">📦</span>
             <span className="nav-label">Registrar</span>
           </Link>
 
           <Link href="/historico" className="nav-item" title="Histórico">
-            <History className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">🕒</span>
             <span className="nav-label">Histórico</span>
           </Link>
 
           <Link href="/aviso" className="nav-item" title="Aviso">
-            <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">⚠️</span>
             <span className="nav-label">Aviso</span>
           </Link>
 
           <button type="button" className="nav-item" onClick={logout} aria-label="Sair" title="Sair">
-            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">↩️</span>
             <span className="nav-label">Sair</span>
           </button>
         </nav>
@@ -706,7 +706,7 @@ export default function MoradoresPage() {
         }
         #moradores-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 4px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }

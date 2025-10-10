@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Next.js 15+: use serverExternalPackages instead of experimental.serverComponentsExternalPackages
-  serverExternalPackages: ["pg", "pg-connection-string"],
+  serverExternalPackages: ["pg", "pg-connection-string", "web-push"],
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -362,7 +362,7 @@ export default function RegistrarPage() {
           }}
         >
           <Link href="/historico" className="nav-item" title="Histórico">
-            <History className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">🕒</span>
             <span className="nav-label">Histórico</span>
           </Link>
 
@@ -374,7 +374,7 @@ export default function RegistrarPage() {
           )}
 
           <Link href="/aviso" className="nav-item" title="Aviso">
-            <AlertTriangle className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">⚠️</span>
             <span className="nav-label">Aviso</span>
           </Link>
 
@@ -385,7 +385,7 @@ export default function RegistrarPage() {
             aria-label="Sair"
             title="Sair"
           >
-            <LogOut className="nav-icon-svg" aria-hidden="true" />
+            <span className="nav-icon" aria-hidden="true">↩️</span>
             <span className="nav-label">Sair</span>
           </button>
         </nav>
@@ -406,7 +406,7 @@ export default function RegistrarPage() {
         }
         #registrar-nav .nav-item {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 8px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
+          gap: 4px; padding: 7px 14px; margin: 6px 8px; border-radius: 12px;
           color: var(--muted-foreground);
           transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
         }
