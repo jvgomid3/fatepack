@@ -377,7 +377,7 @@ export default function EncomendasPage() {
 
       <style jsx>{`
         /* base */
-        .nav-menu { position: fixed; bottom: 0; z-index: 1000; padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+  .nav-menu { position: fixed; bottom: 0; z-index: 1000; }
         .container { padding-bottom: 80px; }
         .field { display: flex; align-items: center; gap: 6px; }
         .label { font-weight: 700; }

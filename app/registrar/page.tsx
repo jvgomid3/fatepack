@@ -393,7 +393,7 @@ export default function RegistrarPage() {
 
       <style jsx>{`
         /* base */
-        .nav-menu { position: fixed; bottom: 0; z-index: 1000; padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+  .nav-menu { position: fixed; bottom: 0; z-index: 1000; }
         .container { padding-bottom: 80px; }
 
         /* moderna com azul discreto */
