@@ -28,7 +28,17 @@ export async function enablePushNotifications(getToken: () => string | null) {
     return { ok: true }
   }
 
-  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  if (!vapidPublicKey) {
+    // Try runtime fetch from API as a fallback
+    try {
+      const resp = await fetch('/api/push/public-key', { cache: 'no-store' })
+      const json: any = await resp.json().catch(() => null)
+      if (json?.ok && json?.publicKey) {
+        vapidPublicKey = json.publicKey
+      }
+    } catch {}
+  }
   if (!vapidPublicKey) return { ok: false, reason: 'MISSING_VAPID' }
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
