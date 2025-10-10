@@ -28,6 +28,36 @@ export default function InicioPage() {
   const [navDims, setNavDims] = useState({ left: 0, width: 0 })
   const [mounted, setMounted] = useState(false)
   const [pushEnabled, setPushEnabled] = useState<boolean>(false)
+  // hidden debug: long-press on the notifications button opens /debug-push
+  const debugTimerRef = useRef<number | null>(null)
+  const tapsRef = useRef<{count:number;timer:number|null}>({count:0,timer:null})
+  const startDebugTimer = () => {
+    try {
+      // 1500ms press opens debug page
+      debugTimerRef.current = window.setTimeout(() => {
+        router.push('/debug-push')
+      }, 1500)
+    } catch {}
+  }
+  const cancelDebugTimer = () => {
+    if (debugTimerRef.current) {
+      clearTimeout(debugTimerRef.current)
+      debugTimerRef.current = null
+    }
+  }
+  const handleTitleTap = () => {
+    // triple-tap on title opens debug
+    const ref = tapsRef.current
+    ref.count += 1
+    if (ref.count >= 3) {
+      ref.count = 0
+      if (ref.timer) { clearTimeout(ref.timer); ref.timer = null }
+      router.push('/debug-push')
+      return
+    }
+    if (ref.timer) clearTimeout(ref.timer)
+    ref.timer = window.setTimeout(() => { ref.count = 0; ref.timer = null }, 1200)
+  }
 
   // logout copiado da /encomendas: limpa storage e faz replace + redirect
   const logout = () => {
@@ -220,7 +250,13 @@ export default function InicioPage() {
       <div className="container" ref={containerRef}>
         {/* título superior à direita, no mesmo lugar da saudação de /encomendas */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
-          <span style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)" }}>Página Inicial</span>
+          <span
+            onClick={handleTitleTap}
+            style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)", userSelect: 'none', WebkitUserSelect: 'none' as any }}
+            title="Toque 3x para abrir a página de debug"
+          >
+            Página Inicial
+          </span>
         </div>
 
         <div className="header" style={{ position: "relative", marginTop: 42 }}>
@@ -230,6 +266,7 @@ export default function InicioPage() {
           <div style={{ marginTop: 8 }}>
             <button
               onClick={async () => {
+                if (pushEnabled) return // evita re-solicitar, mas mantém gesto de long-press ativo
                 const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
                 try {
                   const res = await enablePushNotifications(getToken)
@@ -263,7 +300,13 @@ export default function InicioPage() {
                   } catch {}
                 }
               }}
-              disabled={pushEnabled}
+              onMouseDown={startDebugTimer}
+              onMouseUp={cancelDebugTimer}
+              onMouseLeave={cancelDebugTimer}
+              onTouchStart={startDebugTimer}
+              onTouchEnd={cancelDebugTimer}
+              onContextMenu={(e) => { e.preventDefault() }}
+              aria-disabled={pushEnabled}
               style={{
                 fontSize: 12,
                 padding: '6px 10px',
@@ -272,6 +315,12 @@ export default function InicioPage() {
                 color: 'white',
                 border: 'none',
                 cursor: pushEnabled ? 'default' : 'pointer',
+                opacity: pushEnabled ? 0.9 : 1,
+                // prevent text selection/callout on long-press
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+                touchAction: 'manipulation',
               }}
             >
               {pushEnabled ? 'Notificações ativas' : 'Ativar notificações'}

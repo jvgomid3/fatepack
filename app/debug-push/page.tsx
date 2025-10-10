@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { enablePushNotifications } from "../../lib/pushClient"
 
 export default function DebugPushPage() {
   const [loading, setLoading] = useState(false)
@@ -10,7 +11,19 @@ export default function DebugPushPage() {
     <div style={{ padding: 16 }}>
       <h1>Debug Push</h1>
       <p>Use estes botões para verificar a inscrição e enviar um push de teste para o usuário atual.</p>
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <button disabled={loading} onClick={async () => {
+          setLoading(true)
+          try {
+            const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+            const res = await enablePushNotifications(getToken)
+            const j = { action: 'sync', result: res }
+            setResult(j)
+          } finally {
+            setLoading(false)
+          }
+        }}>Reinscrever/sincronizar assinatura</button>
+
         <button disabled={loading} onClick={async () => {
           setLoading(true)
           try {
@@ -36,6 +49,12 @@ export default function DebugPushPage() {
       <pre style={{ marginTop: 16, background: '#f8fafc', padding: 12, borderRadius: 8, maxWidth: 800, whiteSpace: 'pre-wrap' }}>
         {result ? JSON.stringify(result, null, 2) : 'Sem resultados ainda.'}
       </pre>
+      <ol style={{marginTop:12, color:'#475569'}}>
+        <li>1) No iPhone, use o app instalado na Tela de Início (PWA), não o Safari aberto.</li>
+        <li>2) Toque em "Reinscrever/sincronizar assinatura" para vincular sua inscrição ao usuário logado.</li>
+        <li>3) Toque em "Listar inscrições (GET)"; deve mostrar count ≥ 1.</li>
+        <li>4) Toque em "Enviar push de teste (POST)" e deixe o app em segundo plano por alguns segundos para ver a notificação.</li>
+      </ol>
     </div>
   )
 }
