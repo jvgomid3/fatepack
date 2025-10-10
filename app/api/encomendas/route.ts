@@ -264,7 +264,7 @@ export async function POST(req: Request) {
       if (!es && Array.isArray(subs) && subs.length) {
         const payload = {
           title: "📦 Nova encomenda",
-          body: `Você recebeu uma nova encomenda para o Apto ${apartamento}.`,
+          body: `Uma nova encomenda para ${destinatario}.`,
           url: "/encomendas",
           tag: "new-encomenda",
         }
