@@ -231,8 +231,37 @@ export default function InicioPage() {
             <button
               onClick={async () => {
                 const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
-                const res = await enablePushNotifications(getToken)
-                if (res.ok) setPushEnabled(true)
+                try {
+                  const res = await enablePushNotifications(getToken)
+                  // Always re-check the subscription after requesting permission
+                  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                    try {
+                      const reg = await navigator.serviceWorker.ready
+                      const sub = await reg.pushManager.getSubscription()
+                      setPushEnabled(!!sub)
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  if (!res?.ok) {
+                    // Provide a minimal feedback for common cases
+                    const reason = (res as any)?.reason
+                    if (reason === 'UNSUPPORTED') {
+                      alert('Seu navegador não suporta notificações push. No iPhone, instale o app na tela inicial (Compartilhar > Adicionar à Tela de Início).')
+                    } else if (reason === 'DENIED') {
+                      alert('Permissão de notificações negada. Vá em Ajustes do iPhone > Notificações > FatePack e ative, ou reinstale o app PWA.')
+                    } else if (reason === 'MISSING_VAPID') {
+                      alert('Chave de push não configurada (VAPID). Avise o administrador para configurar as variáveis de ambiente.')
+                    }
+                  }
+                } catch (e) {
+                  // Silent fail but try a final state check
+                  try {
+                    const reg = await navigator.serviceWorker.ready
+                    const sub = await reg.pushManager.getSubscription()
+                    setPushEnabled(!!sub)
+                  } catch {}
+                }
               }}
               disabled={pushEnabled}
               style={{
