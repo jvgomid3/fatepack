@@ -27,6 +27,37 @@ export default function DebugPushPage() {
         <button disabled={loading} onClick={async () => {
           setLoading(true)
           try {
+            // Remove subscription from browser and server
+            if ('serviceWorker' in navigator) {
+              const reg = await navigator.serviceWorker.ready
+              const sub = await reg.pushManager.getSubscription()
+              if (sub) {
+                try {
+                  const ep = sub.endpoint
+                  await sub.unsubscribe().catch(() => {})
+                  const token = (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+                  if (ep) {
+                    await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(ep)}`, {
+                      method: 'DELETE',
+                      headers: {
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                    }).catch(() => {})
+                  }
+                } catch {}
+              }
+            }
+            const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store' })
+            const j = await res.json().catch(() => null)
+            setResult({ action: 'unsubscribe', result: j })
+          } finally {
+            setLoading(false)
+          }
+        }}>Desinscrever e limpar</button>
+
+        <button disabled={loading} onClick={async () => {
+          setLoading(true)
+          try {
             const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store' })
             const j = await res.json().catch(() => null)
             setResult(j)

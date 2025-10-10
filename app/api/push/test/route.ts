@@ -45,13 +45,27 @@ export async function POST(req: NextRequest) {
     const results = await Promise.allSettled(
       subs.map((s: any) => sendPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload))
     )
+    // Clean up subscriptions that are gone/invalid (410/404)
+    const toDelete: string[] = []
+    results.forEach((r, i) => {
+      const reason: any = (r as any)?.reason
+      const code = reason?.statusCode || reason?.status || undefined
+      if (r.status === 'rejected' && (code === 410 || code === 404)) {
+        const ep = subs[i]?.endpoint
+        if (ep) toDelete.push(ep)
+      }
+    })
+    if (toDelete.length) {
+      await supa.from('push_subscription').delete().in('endpoint', toDelete).eq('user_id', Number(user.id))
+    }
     const summary = {
       total: subs.length,
       fulfilled: results.filter((r) => r.status === "fulfilled").length,
       rejected: results.filter((r) => r.status === "rejected").length,
       errors: results
-        .map((r, i) => ({ idx: i, status: r.status, reason: (r as any)?.reason?.message }))
+        .map((r, i) => ({ idx: i, status: r.status, reason: (r as any)?.reason?.message, statusCode: (r as any)?.reason?.statusCode }))
         .filter((e) => e.status === "rejected"),
+      cleanedUp: toDelete.length,
     }
     return NextResponse.json({ ok: true, summary })
   } catch (e: any) {
