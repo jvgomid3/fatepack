@@ -364,7 +364,8 @@ html, body { height: 100%; overflow-x: hidden; }
 
   background: var(--card, #fff);
   border: 1px solid #e5e7eb;
-  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 6px);
+  /* aumenta o padding inferior para não colidir com o home indicator do iPhone */
+  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 16px);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -416,7 +417,8 @@ html, body { height: 100%; overflow-x: hidden; }
 @media (max-width: 420px) {
   .nav-menu {
     width: calc(100% - 24px);
-    padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
+    /* idem para telas pequenas: mais folga acima do indicador */
+    padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 14px);
     border-radius: 12px;
   }
 
