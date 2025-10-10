@@ -6,6 +6,7 @@ import { enablePushNotifications } from "../../lib/pushClient"
 export default function DebugPushPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
 
   return (
     <div style={{ padding: 16 }}>
@@ -15,7 +16,6 @@ export default function DebugPushPage() {
         <button disabled={loading} onClick={async () => {
           setLoading(true)
           try {
-            const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
             const res = await enablePushNotifications(getToken)
             const j = { action: 'sync', result: res }
             setResult(j)
@@ -35,7 +35,7 @@ export default function DebugPushPage() {
                 try {
                   const ep = sub.endpoint
                   await sub.unsubscribe().catch(() => {})
-                  const token = (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+                  const token = getToken()
                   if (ep) {
                     await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(ep)}`, {
                       method: 'DELETE',
@@ -47,7 +47,12 @@ export default function DebugPushPage() {
                 } catch {}
               }
             }
-            const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store' })
+            const token = getToken()
+            if (!token) {
+              setResult({ action: 'unsubscribe', result: { error: 'NO_TOKEN', hint: 'Faça login para executar chamadas autenticadas.' } })
+              return
+            }
+            const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store', headers: { Authorization: `Bearer ${token}` } })
             const j = await res.json().catch(() => null)
             setResult({ action: 'unsubscribe', result: j })
           } finally {
@@ -58,7 +63,12 @@ export default function DebugPushPage() {
         <button disabled={loading} onClick={async () => {
           setLoading(true)
           try {
-            const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store' })
+            const token = getToken()
+            if (!token) {
+              setResult({ error: 'NO_TOKEN', hint: 'Faça login para listar suas inscrições.' })
+              return
+            }
+            const res = await fetch('/api/push/test', { method: 'GET', cache: 'no-store', headers: { Authorization: `Bearer ${token}` } })
             const j = await res.json().catch(() => null)
             setResult(j)
           } finally {
@@ -69,7 +79,12 @@ export default function DebugPushPage() {
         <button disabled={loading} onClick={async () => {
           setLoading(true)
           try {
-            const res = await fetch('/api/push/test', { method: 'POST' })
+            const token = getToken()
+            if (!token) {
+              setResult({ error: 'NO_TOKEN', hint: 'Faça login para enviar push de teste.' })
+              return
+            }
+            const res = await fetch('/api/push/test', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
             const j = await res.json().catch(() => null)
             setResult(j)
           } finally {
