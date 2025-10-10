@@ -122,7 +122,7 @@ export default function InicioAdminPage() {
                 style={{ background: "linear-gradient(135deg, #faf5ff 0%, #e9d5ff 60%, #d8b4fe 100%)" }}
               >
                 <div className="card-inner">
-                  <UserRound className="card-icon" aria-hidden="true" />
+                  <span className="card-icon" aria-hidden="true" style={{ fontSize: 22, lineHeight: 1 }}>👤</span>
                   <div className="card-title">Gestão de Moradores</div>
                   <div className="card-desc">Crie, edite e gerencie moradores</div>
                 </div>
