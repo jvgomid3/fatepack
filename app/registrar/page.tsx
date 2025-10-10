@@ -368,7 +368,7 @@ export default function RegistrarPage() {
 
           {isAdmEmail && (
             <Link href="/moradores" className="nav-item" title="Moradores">
-              <UserRound className="nav-icon-svg" aria-hidden="true" />
+              <span className="nav-icon" aria-hidden="true">👤</span>
               <span className="nav-label">Moradores</span>
             </Link>
           )}
