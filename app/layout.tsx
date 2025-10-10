@@ -21,7 +21,11 @@ export const metadata: Metadata = {
       { url: "/placeholder-logo.png", sizes: "192x192", type: "image/png" },
       { url: "/placeholder-logo.png", sizes: "512x512", type: "image/png" },
     ],
+    // iOS: fornecemos múltiplos tamanhos; todos apontam para o mesmo PNG do login
     apple: [
+      { url: "/placeholder-logo.png", sizes: "120x120", type: "image/png" },
+      { url: "/placeholder-logo.png", sizes: "152x152", type: "image/png" },
+      { url: "/placeholder-logo.png", sizes: "167x167", type: "image/png" },
       { url: "/placeholder-logo.png", sizes: "180x180", type: "image/png" },
     ],
     // Keep the SVG as a regular favicon if desired; not used for app icon

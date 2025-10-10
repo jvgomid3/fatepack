@@ -18,6 +18,18 @@ const nextConfig = {
     }
     return config
   },
+  async rewrites() {
+    // iOS often requests specific apple-touch-icon filenames at the root.
+    // Map them to our existing login PNG to ensure the correct home screen icon shows up.
+    return [
+      { source: '/apple-touch-icon.png', destination: '/placeholder-logo.png' },
+      { source: '/apple-touch-icon-precomposed.png', destination: '/placeholder-logo.png' },
+      { source: '/apple-touch-icon-180x180.png', destination: '/placeholder-logo.png' },
+      { source: '/apple-touch-icon-152x152.png', destination: '/placeholder-logo.png' },
+      { source: '/apple-touch-icon-167x167.png', destination: '/placeholder-logo.png' },
+      { source: '/apple-touch-icon-120x120.png', destination: '/placeholder-logo.png' },
+    ]
+  },
 }
 
 export default nextConfig
