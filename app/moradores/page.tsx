@@ -127,6 +127,9 @@ export default function MoradoresPage() {
     return `(${p1}) ${p2}-${p3}`
   }
 
+  // mantém a primeira letra minúscula (exigência para campos de e-mail)
+  const lowerFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
+
   const handleSearch = async () => {
     setSearchMsg("")
     setMsg("")
@@ -460,12 +463,12 @@ export default function MoradoresPage() {
             <div className="card search-card">
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">E-mail</label>
-                  <input className="form-input" type="text" value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} placeholder="maria@exemplo.com" />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Nome</label>
                   <input className="form-input" type="text" value={searchNome} onChange={(e) => setSearchNome(capFirst(e.target.value))} placeholder="Maria Silva" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">E-mail</label>
+                  <input className="form-input" type="text" value={searchEmail} onChange={(e) => setSearchEmail(lowerFirst(e.target.value))} placeholder="maria@exemplo.com" />
                 </div>
               </div>
               <div className="form-row">
@@ -557,8 +560,8 @@ export default function MoradoresPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">E-mail</label>
-                <input className="form-input" type="email" value={form.email}
-                       onChange={(e) => setForm({ ...form, email: e.target.value })}
+      <input className="form-input" type="email" value={form.email}
+        onChange={(e) => setForm({ ...form, email: lowerFirst(e.target.value) })}
                        placeholder="email@exemplo.com" />
               </div>
               <div className="form-group">
@@ -866,7 +869,7 @@ export default function MoradoresPage() {
 
       {/* Confirm deletion dialog */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+  <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Tem certeza que deseja excluir este morador?</AlertDialogTitle>
             <AlertDialogDescription>

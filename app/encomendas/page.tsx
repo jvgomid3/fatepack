@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react"
 import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 import { Home, LogOut } from "lucide-react"
+import PullToRefresh from "../components/PullToRefresh"
 
 interface Encomenda {
   id: string
@@ -52,6 +53,7 @@ export default function EncomendasPage() {
   const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
+  const [refreshTick, setRefreshTick] = useState(0)
   const [mesFiltro, setMesFiltro] = useState("")
   const [onlyPending, setOnlyPending] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -130,7 +132,7 @@ export default function EncomendasPage() {
     }
 
     loadFromDB()
-  }, [router])
+  }, [router, refreshTick])
 
   useEffect(() => {
     const measure = () => {
@@ -254,6 +256,16 @@ export default function EncomendasPage() {
 
   return (
     <>
+      <PullToRefresh
+        onRefresh={async () => {
+          // Trigger client reloads and keep the spinner visible briefly
+          setRefreshTick((t) => t + 1)
+          try { router.refresh() } catch {}
+          await new Promise((r) => setTimeout(r, 450))
+        }}
+        allowWithinSelector="#filtro-mes-card"
+        denyBelowSelector="#encomendas-anteriores-boundary"
+      >
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -268,7 +280,7 @@ export default function EncomendasPage() {
             <p>Visualize suas encomendas recebidas</p>
           </div>
 
-          <div className="card">
+          <div id="filtro-mes-card" className="card">
             <div className="form-group">
               <label className="form-label">Filtrar por Mês</label>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -315,7 +327,7 @@ export default function EncomendasPage() {
           )}
 
           {encomendasVistas.length > 0 && (
-            <div>
+            <div id="encomendas-anteriores-boundary">
               <h2
                 style={{ color: "var(--muted-foreground)", marginBottom: "1rem", fontSize: "1.25rem", marginTop: "2rem" }}
               >
@@ -375,7 +387,7 @@ export default function EncomendasPage() {
         </nav>
       </div>
 
-      <style jsx>{`
+  <style jsx>{`
         /* base */
   .nav-menu { position: fixed; bottom: 0; z-index: 1000; }
         .container { padding-bottom: 80px; }
@@ -406,6 +418,7 @@ export default function EncomendasPage() {
         #encomendas-nav .nav-icon-svg { width: 18px; height: 18px; }
         #encomendas-nav .nav-label { font-weight: 700; font-size: 14px; letter-spacing: -0.2px; }
       `}</style>
+      </PullToRefresh>
     </>
   )
 }

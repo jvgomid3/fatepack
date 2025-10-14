@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState("")
+  const lowerFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -65,7 +66,7 @@ export default function LoginPage() {
           <input
             name="username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => setUsername(lowerFirst(e.target.value))}
             style={{ width: "100%", padding: 10, borderRadius: 6 }}
           />
         </div>

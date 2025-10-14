@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { History, LogOut, Package, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
+import PullToRefresh from "../components/PullToRefresh"
 import { useRouter } from "next/navigation"
 
 // helper: capitaliza a primeira letra não-espaço
@@ -46,6 +47,7 @@ export default function AvisoPage() {
   }
 
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
   const [isAdmEmail, setIsAdmEmail] = useState(false)
   const [titulo, setTitulo] = useState("")
   const [mensagem, setMensagem] = useState("")
@@ -71,7 +73,7 @@ export default function AvisoPage() {
     setIsAdmEmail(email === "adm")
   }, [])
 
-  // carrega avisos ativos periodicamente
+  // carrega avisos ativos periodicamente e também quando houver refresh manual
   useEffect(() => {
     const loadAvisos = async () => {
       try {
@@ -86,7 +88,15 @@ export default function AvisoPage() {
     loadAvisos()
     const id = setInterval(loadAvisos, 60000)
     return () => clearInterval(id)
-  }, [])
+  }, [refreshTick])
+
+  const handleRefresh = async () => {
+    setRefreshTick((t) => t + 1)
+    try {
+      router.refresh()
+    } catch {}
+    await new Promise((r) => setTimeout(r, 450))
+  }
 
   async function handleEnviarAviso() {
     if (!titulo.trim() || !mensagem.trim() || !expiraEm.trim()) {
@@ -239,7 +249,8 @@ export default function AvisoPage() {
   return (
     <>
       <AdminGate />
-      <div className="container" ref={containerRef}>
+  <PullToRefresh onRefresh={handleRefresh} denyBelowSelector="#aviso-expira">
+  <div className="container" ref={containerRef}>
         <div className="main-content">
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -266,7 +277,7 @@ export default function AvisoPage() {
                 onChange={(e) => setTitulo(capFirst(e.target.value))}
               />
             </div>
-            <div className="form-group">
+            <div className="form-group" id="aviso-mensagem">
               <label className="form-label">Mensagem</label>
               <textarea
                 className="form-input"
@@ -276,7 +287,7 @@ export default function AvisoPage() {
                 onChange={(e) => setMensagem(capFirst(e.target.value))}
               />
             </div>
-            <div className="form-group">
+            <div className="form-group" id="aviso-expira">
               <label className="form-label">Data de Expiração</label>
               <input
                 type="datetime-local"
@@ -400,7 +411,8 @@ export default function AvisoPage() {
             <span className="nav-label">Sair</span>
           </button>
         </nav>
-      </div>
+  </div>
+  </PullToRefresh>
 
       <style jsx>{`
         /* base */

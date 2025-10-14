@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Package, LogOut, AlertTriangle, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
+import PullToRefresh from "../components/PullToRefresh"
 
 interface Encomenda {
   id: string
@@ -66,6 +67,7 @@ export default function HistoricoPage() {
   }
 
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
+  const [refreshTick, setRefreshTick] = useState(0)
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
   const [filtroMes, setFiltroMes] = useState(() => {
     const now = new Date()
@@ -161,7 +163,16 @@ export default function HistoricoPage() {
     // atualiza a cada 30s
     const id = setInterval(() => load().catch(() => { }), 30000)
     return () => clearInterval(id)
-  }, [])
+  }, [refreshTick])
+
+  const handleRefresh = async () => {
+    setRefreshTick((t) => t + 1)
+    try {
+      router.refresh()
+    } catch { }
+    // manter o spinner visível por um curto período
+    await new Promise((r) => setTimeout(r, 450))
+  }
 
   // Helper: extrai chave AAAA-MM a partir de dataRecebimento ("DD/MM/AAAA HH:mm" ou ISO)
   const monthKeyFromDate = (value?: string) => {
@@ -228,6 +239,7 @@ export default function HistoricoPage() {
   return (
     <>
       <AdminGate />
+  <PullToRefresh onRefresh={handleRefresh} denyBelowSelector="#historico-filtro-mes">
       <div className="container" ref={containerRef}>
         <div className="main-content">
           {showPickupPopup && (
@@ -303,7 +315,7 @@ export default function HistoricoPage() {
               </div>
 
               {/* Empresa (já existia) */}
-              <div className="form-group">
+              <div className="form-group" id="historico-filtro-empresa">
                 <label className="form-label">Empresa</label>
                 <select
                   className="form-select"
@@ -318,7 +330,7 @@ export default function HistoricoPage() {
               </div>
 
               {/* Mês */}
-              <div className="form-group">
+              <div className="form-group" id="historico-filtro-mes">
                 <label className="form-label">Mês</label>
                 <select
                   className="form-select"
@@ -548,6 +560,7 @@ export default function HistoricoPage() {
           </button>
         </nav>
       </div>
+      </PullToRefresh>
 
       <style jsx>{`
         /* base */

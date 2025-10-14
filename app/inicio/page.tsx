@@ -6,6 +6,7 @@ import { Mail, UserRound, ClipboardList, Home, Package, LogOut } from "lucide-re
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { enablePushNotifications } from "../../lib/pushClient"
+import PullToRefresh from "../components/PullToRefresh"
 
 export default function InicioPage() {
   const router = useRouter()
@@ -28,6 +29,7 @@ export default function InicioPage() {
   const [navDims, setNavDims] = useState({ left: 0, width: 0 })
   const [mounted, setMounted] = useState(false)
   const [pushEnabled, setPushEnabled] = useState<boolean>(false)
+  const [refreshTick, setRefreshTick] = useState(0)
   // hidden debug: long-press on the notifications button opens /debug-push
   const debugTimerRef = useRef<number | null>(null)
   const tapsRef = useRef<{count:number;timer:number|null}>({count:0,timer:null})
@@ -122,7 +124,7 @@ export default function InicioPage() {
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [refreshTick])
 
   // medição do container para nav (mantém comportamento antigo)
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function InicioPage() {
     measure()
     window.addEventListener("resize", measure)
     return () => window.removeEventListener("resize", measure)
-  }, [])
+  }, [refreshTick])
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -230,7 +232,13 @@ export default function InicioPage() {
       }
     }
     loadMoradores()
-  }, [userBlock, userApartment])
+  }, [userBlock, userApartment, refreshTick])
+
+  const handleRefresh = async () => {
+    setRefreshTick((t) => t + 1)
+    try { router.refresh() } catch {}
+    await new Promise((r) => setTimeout(r, 350))
+  }
 
   // mascara de telefone BR
   const formatPhoneBR = (input: string): string => {
@@ -247,7 +255,8 @@ export default function InicioPage() {
     <>
       {/* Badge fixo removido a pedido: não exibir "Área do Morador" nesta página */}
 
-      <div className="container" ref={containerRef}>
+  <PullToRefresh onRefresh={handleRefresh} denyBelowSelector="#moradores-top-boundary">
+  <div className="container" ref={containerRef}>
         {/* título superior à direita, no mesmo lugar da saudação de /encomendas */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
           <span
@@ -373,7 +382,7 @@ export default function InicioPage() {
           </div>
 
           {/* Moradores do Apartamento */}
-          <div className="card moradores-card" style={{ marginTop: 16 }}>
+          <div id="moradores-top-boundary" className="card moradores-card" style={{ marginTop: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <span aria-hidden="true" style={{ fontSize: 18 }}>👥</span>
               <h2 className="section-title moradores-title" style={{ fontSize: 18, margin: 0, fontWeight: 800 }}>Moradores do Apartamento</h2>
@@ -498,7 +507,7 @@ export default function InicioPage() {
             )}
           </nav>
         )}
-       </div>
+  </div>
 
       <style jsx>{`
          .user-greeting {
@@ -648,6 +657,7 @@ export default function InicioPage() {
         .morador-item { background: rgba(99, 102, 241, 0.08); }
         .alert-item { background: rgba(245, 158, 11, 0.08); }
       `}</style>
+      </PullToRefresh>
     </>
   )
 }

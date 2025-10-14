@@ -23,6 +23,7 @@ export default function RecuperarSenhaPage() {
   }
 
   const [email, setEmail] = useState("")
+  const lowerFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
   // novo fluxo por etapas
   const [step, setStep] = useState<"verify" | "send" | "code" | "reset">("verify")
   const [checking, setChecking] = useState(false)
@@ -188,7 +189,7 @@ export default function RecuperarSenhaPage() {
                     autoComplete="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => setEmail(lowerFirst(e.target.value))}
                     className="form-input"
                     autoCapitalize="off"
                     spellCheck={false}

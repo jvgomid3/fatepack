@@ -11,6 +11,9 @@ const capFirst = (s: string) => {
   return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
+// deixa a primeira letra minúscula (para campos de e-mail)
+const lowerFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
+
 // Formata telefone para (99) 99999-9999 ou (99) 9999-9999
 function formatPhoneBR(input: string): string {
   const d = String(input || "").replace(/\D/g, "")
@@ -350,7 +353,7 @@ export default function HomePage() {
                   id="email"
                   name="email"
                   value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  onChange={(e) => setLoginEmail(lowerFirst(e.target.value))}
                   placeholder="Digite seu e-mail"
                   required
                   style={{
@@ -444,7 +447,7 @@ export default function HomePage() {
                   className="form-input"
                   placeholder="Insira seu e-mail"
                   value={caEmail}
-                  onChange={(e) => setCaEmail(e.target.value)}
+                  onChange={(e) => setCaEmail(lowerFirst(e.target.value))}
                   name="email"
                   autoComplete="email"
                   inputMode="email"
