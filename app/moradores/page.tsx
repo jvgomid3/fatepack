@@ -468,7 +468,17 @@ export default function MoradoresPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">E-mail</label>
-                  <input className="form-input" type="text" value={searchEmail} onChange={(e) => setSearchEmail(lowerFirst(e.target.value))} placeholder="maria@exemplo.com" />
+                  <input
+                    className="form-input"
+                    type="email"
+                    value={searchEmail}
+                    onChange={(e) => setSearchEmail(lowerFirst(e.target.value))}
+                    placeholder="maria@exemplo.com"
+                    inputMode="email"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    autoComplete="email"
+                  />
                 </div>
               </div>
               <div className="form-row">
@@ -560,9 +570,17 @@ export default function MoradoresPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">E-mail</label>
-      <input className="form-input" type="email" value={form.email}
-        onChange={(e) => setForm({ ...form, email: lowerFirst(e.target.value) })}
-                       placeholder="email@exemplo.com" />
+                <input
+                  className="form-input"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: lowerFirst(e.target.value) })}
+                  placeholder="email@exemplo.com"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  autoComplete="email"
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Telefone</label>

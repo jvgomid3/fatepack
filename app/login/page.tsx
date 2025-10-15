@@ -68,6 +68,11 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(lowerFirst(e.target.value))}
             style={{ width: "100%", padding: 10, borderRadius: 6 }}
+            type="email"
+            inputMode="email"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="email"
           />
         </div>
         <div style={{ marginBottom: 12 }}>

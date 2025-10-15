@@ -192,6 +192,8 @@ export default function RecuperarSenhaPage() {
                       onChange={(e) => setEmail(lowerFirst(e.target.value))}
                     className="form-input"
                     autoCapitalize="off"
+                    inputMode="email"
+                    autoCorrect="off"
                     spellCheck={false}
                     required
                   />

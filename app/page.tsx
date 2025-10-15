@@ -361,7 +361,7 @@ export default function HomePage() {
               <div className="form-group">
                 <label htmlFor="email">E-mail:</label>
                 <input
-                  type="text"
+                  type="email"
                   id="email"
                   name="email"
                   value={loginEmail}
@@ -376,6 +376,10 @@ export default function HomePage() {
                     width: "100%", // garante largura total
                     boxSizing: "border-box", // garante que padding não ultrapasse o card
                   }}
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  autoComplete="email"
                 />
               </div>
 
