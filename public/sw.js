@@ -21,6 +21,7 @@ self.addEventListener('push', (event) => {
     const icon = '/placeholder-logo.png';
     const badge = '/placeholder-logo.png';
     const tag = data.tag || 'fatepack-general';
+    const count = typeof data.count === 'number' ? data.count : undefined;
     event.waitUntil(
       self.registration.showNotification(title, {
         body,
@@ -31,6 +32,12 @@ self.addEventListener('push', (event) => {
         renotify: true,
       })
     );
+    // Try Badging API from SW when supported and a count is provided
+    try {
+      if (typeof count === 'number' && 'setAppBadge' in self.registration) {
+        (self.registration).setAppBadge(count).catch(() => {});
+      }
+    } catch (e) {}
   } catch (e) {
     // ignore
   }

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { enablePushNotifications } from "../../lib/pushClient"
 import PullToRefresh from "../components/PullToRefresh"
+import { setBadge, clearBadge } from "../../lib/badging"
 
 export default function InicioPage() {
   const router = useRouter()
@@ -19,6 +20,7 @@ export default function InicioPage() {
   const [moradores, setMoradores] = useState<Array<{ nome: string; telefone?: string; tipo?: string }>>([])
   const [pendingCount, setPendingCount] = useState<number>(0)
   const [activeAvisos, setActiveAvisos] = useState<Array<{ id_aviso: number; titulo: string; mensagem: string; inicio: string; fim: string }>>([])
+  const [unreadAvisos, setUnreadAvisos] = useState<number>(0)
   // data exemplo para aviso do condomínio (3 dias à frente)
   const energyAlertDate = (() => {
     const d = new Date()
@@ -219,6 +221,33 @@ export default function InicioPage() {
     }
     loadMoradores()
   }, [userBlock, userApartment, refreshTick])
+
+  // Lê/atualiza estado de avisos lidos e calcula badge
+  useEffect(() => {
+    try {
+      // Marca avisos lidos usando localStorage por id
+      const key = 'avisosReadIds'
+      const raw = localStorage.getItem(key)
+      const readIds = new Set<number>(raw ? JSON.parse(raw) : [])
+      // Se o usuário visualizar esta página, podemos considerar todos avisos como lidos
+      // no primeiro mount. Para uma leitura mais fiel, poderíamos exigir interação.
+      if (activeAvisos.length) {
+        activeAvisos.forEach(a => readIds.add(a.id_aviso))
+        localStorage.setItem(key, JSON.stringify(Array.from(readIds)))
+      }
+      const unread = activeAvisos.filter(a => !readIds.has(a.id_aviso)).length
+      setUnreadAvisos(unread)
+    } catch {
+      setUnreadAvisos(0)
+    }
+  }, [activeAvisos])
+
+  // Calcula badge: pendentes de encomendas + avisos não lidos
+  useEffect(() => {
+    const total = Number(pendingCount || 0) + Number(unreadAvisos || 0)
+    if (total > 0) setBadge(total)
+    else clearBadge()
+  }, [pendingCount, unreadAvisos])
 
   const handleRefresh = async () => {
     setRefreshTick((t) => t + 1)
