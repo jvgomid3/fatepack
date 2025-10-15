@@ -5,6 +5,7 @@ import Link from "next/link"
 import AdminMenu from "../components/AdminMenu"
 import { Home, LogOut } from "lucide-react"
 import PullToRefresh from "../components/PullToRefresh"
+import { performLogout } from "../../lib/logout"
 
 interface Encomenda {
   id: string
@@ -61,7 +62,7 @@ export default function EncomendasPage() {
   const [myApt, setMyApt] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState("")
   const [erro, setErro] = useState("")
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const backLinkRef = useRef<HTMLButtonElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
@@ -85,7 +86,7 @@ export default function EncomendasPage() {
     setDisplayName(name)
 
   // iguala a cor do "Olá, ..." à cor do link "←] Sair"
-    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+  const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLElement | null)
     const helloEl = helloRef.current
     if (linkEl && helloEl) {
       const cs = window.getComputedStyle(linkEl)
@@ -227,19 +228,7 @@ export default function EncomendasPage() {
 
   // (capFirst movido para escopo global)
 
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-      localStorage.removeItem("token")
-    } catch {}
-    router.replace("/")
-  // removido reload para evitar flash de layout antigo
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   return (
     <>
@@ -256,7 +245,7 @@ export default function EncomendasPage() {
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName).split(" ")[0]}` : " usuario"}!
             </span>

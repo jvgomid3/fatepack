@@ -3,24 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { performLogout } from "../../lib/logout"
 
 export default function RecuperarSenhaPage() {
   const router = useRouter()
   // logout local
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-    } catch {}
-    // replace so user cannot go back to protected pages
-    router.replace("/")
-    // ensure full reload if any in-memory state remains
-  // removido reload para evitar flash de layout antigo
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   const [email, setEmail] = useState("")
   const lowerFirst = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
@@ -39,7 +27,7 @@ export default function RecuperarSenhaPage() {
 
   // layout refs (mesma lógica do /registrar para nav width)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const backLinkRef = useRef<HTMLButtonElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
@@ -57,7 +45,7 @@ export default function RecuperarSenhaPage() {
 
   useEffect(() => {
     // iguala cor do "Olá, Administrador!" ao link "Voltar ao início"
-    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+  const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLElement | null)
     if (linkEl && helloRef.current) {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
@@ -164,7 +152,7 @@ export default function RecuperarSenhaPage() {
       <div className="container" ref={containerRef}>
         <div className="main-content">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} style={{ fontWeight: 700 }}>Olá!</span>
           </div>
 

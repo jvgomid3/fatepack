@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Package, LogOut, AlertTriangle, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import PullToRefresh from "../components/PullToRefresh"
+import { performLogout } from "../../lib/logout"
 
 interface Encomenda {
   id: string
@@ -53,18 +54,7 @@ function formatBRDateTime(v?: string) {
 
 export default function HistoricoPage() {
   const router = useRouter()
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-    } catch { }
-    router.replace("/")
-  // removido reload para evitar flash de layout antigo
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
   const [refreshTick, setRefreshTick] = useState(0)
@@ -87,7 +77,7 @@ export default function HistoricoPage() {
   const [onlyPending, setOnlyPending] = useState(false)
   const displayName = (currentUser && (currentUser.name || currentUser.nome)) || (typeof window !== "undefined" ? localStorage.getItem("userName") : null) || "Administrador"
   const [confirmLoadingId, setConfirmLoadingId] = useState<string | null>(null) // novo
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null) // novo
+  const backLinkRef = useRef<HTMLButtonElement | null>(null) // novo
   const helloRef = useRef<HTMLSpanElement | null>(null)       // novo
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
@@ -101,7 +91,7 @@ export default function HistoricoPage() {
     setIsAdmin(localStorage.getItem("userType") === "admin")
 
     // cor da saudação
-    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+  const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLElement | null)
     if (linkEl && helloRef.current) {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
@@ -267,7 +257,7 @@ export default function HistoricoPage() {
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>

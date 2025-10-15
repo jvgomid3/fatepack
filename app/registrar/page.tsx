@@ -6,6 +6,7 @@ import Link from "next/link"
 import { History, LogOut, AlertTriangle, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import { useRouter } from "next/navigation"
+import { performLogout } from "../../lib/logout"
 
 interface Encomenda {
   id: string
@@ -32,18 +33,7 @@ const capFirst = (s: string) => {
 export default function RegistrarPage() {
   const router = useRouter()
   const isJWT = (t: string) => typeof t === "string" && t.split(".").length === 3
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-    } catch {}
-    router.replace("/")
-  // removido reload para evitar flash de layout antigo
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   const [bloco, setBloco] = useState("")
   const [apartamento, setApartamento] = useState("")
@@ -86,13 +76,13 @@ export default function RegistrarPage() {
 
   // (removido handleSubmit antigo para evitar confusão; usamos apenas handleRegistrar abaixo)
 
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const backLinkRef = useRef<HTMLButtonElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   useEffect(() => {
-    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+  const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLElement | null)
     if (linkEl && helloRef.current) {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
@@ -210,7 +200,7 @@ export default function RegistrarPage() {
 
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>

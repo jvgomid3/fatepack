@@ -8,6 +8,7 @@ import Link from "next/link"
 import { enablePushNotifications } from "../../lib/pushClient"
 import PullToRefresh from "../components/PullToRefresh"
 import { setBadge, clearBadge } from "../../lib/badging"
+import { performLogout } from "../../lib/logout"
 
 export default function InicioPage() {
   const router = useRouter()
@@ -65,18 +66,8 @@ export default function InicioPage() {
 
   // logout copiado da /encomendas: limpa storage e faz replace + redirect
   const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-      localStorage.removeItem("token")
-      localStorage.removeItem("displayName")
-    } catch {}
+    performLogout()
     router.replace("/")
-  // removido reload para evitar flash de layout antigo
   }
 
   // prioriza ?nome na URL; se não existir, usa localStorage (fluxo de login)

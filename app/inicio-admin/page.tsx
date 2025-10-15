@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react"
 import { History, Package, UserRound, AlertTriangle } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import { useRouter } from "next/navigation"
+import { performLogout } from "../../lib/logout"
 
 export default function InicioAdminPage() {
   const router = useRouter()
@@ -41,21 +42,7 @@ export default function InicioAdminPage() {
   }, [router])
 
   // logout simples: limpa storage e volta para a tela inicial
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-      localStorage.removeItem("token")
-      localStorage.removeItem("displayName")
-      localStorage.removeItem("userEmail")
-      localStorage.removeItem("telefone")
-    } catch {}
-    router.replace("/")
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   if (!hydrated) return null
   if (!isAdmin) return null

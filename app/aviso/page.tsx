@@ -7,6 +7,7 @@ import { History, LogOut, Package, UserRound } from "lucide-react"
 import AdminGate from "../components/AdminGate"
 import PullToRefresh from "../components/PullToRefresh"
 import { useRouter } from "next/navigation"
+import { performLogout } from "../../lib/logout"
 
 // helper: capitaliza a primeira letra não-espaço
 const capFirst = (s: string) => {
@@ -33,18 +34,7 @@ function formatDateTimeBR(value?: string) {
 export default function AvisoPage() {
   const router = useRouter()
 
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-    } catch {}
-    router.replace("/")
-  // removido reload para evitar flash de layout antigo
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [refreshTick, setRefreshTick] = useState(0)
@@ -221,13 +211,13 @@ export default function AvisoPage() {
     }
   }
 
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const backLinkRef = useRef<HTMLButtonElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   useEffect(() => {
-    const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLAnchorElement | null)
+  const linkEl = backLinkRef.current || (document.querySelector(".back-link") as HTMLElement | null)
     if (linkEl && helloRef.current) {
       const cs = window.getComputedStyle(linkEl)
       helloRef.current.style.color = cs.color
@@ -254,7 +244,7 @@ export default function AvisoPage() {
         <div className="main-content">
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>

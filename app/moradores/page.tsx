@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { History, LogOut, Package, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { performLogout } from "../../lib/logout"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,17 +28,7 @@ type Morador = {
 export default function MoradoresPage() {
   const router = useRouter()
 
-  const logout = () => {
-    try {
-      localStorage.removeItem("userType")
-      localStorage.removeItem("userName")
-      localStorage.removeItem("userBlock")
-      localStorage.removeItem("userApartment")
-      localStorage.removeItem("currentUser")
-      localStorage.removeItem("user")
-    } catch {}
-    router.replace("/")
-  }
+  const logout = () => { performLogout(); router.replace("/") }
 
   // Gate por e-mail (não por tipo). Só deixa entrar se email === "adm" ou "admin"
   const [allowed, setAllowed] = useState<boolean | null>(null)
@@ -60,7 +51,7 @@ export default function MoradoresPage() {
 
   // UI state
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const backLinkRef = useRef<HTMLAnchorElement | null>(null)
+  const backLinkRef = useRef<HTMLButtonElement | null>(null)
   const helloRef = useRef<HTMLSpanElement | null>(null)
   const [navDims, setNavDims] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
@@ -417,7 +408,7 @@ export default function MoradoresPage() {
         <div className="main-content">
           {/* Top bar com saudação */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <Link href="/" className="back-link" ref={backLinkRef}>←] Sair</Link>
+            <button type="button" className="back-link" ref={backLinkRef} onClick={logout} aria-label="Sair" title="Sair">←] Sair</button>
             <span ref={helloRef} className="hello-greeting" style={{ fontFamily: "inherit", fontWeight: 700 }}>
               Olá{displayName ? `, ${String(displayName)}` : " Administrador"}!
             </span>
