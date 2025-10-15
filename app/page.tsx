@@ -361,7 +361,7 @@ export default function HomePage() {
               <div className="form-group">
                 <label htmlFor="email">E-mail:</label>
                 <input
-                  type="email"
+                  type="text"
                   id="email"
                   name="email"
                   value={loginEmail}
