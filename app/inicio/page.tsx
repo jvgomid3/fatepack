@@ -150,25 +150,11 @@ export default function InicioPage() {
     }).catch(() => {})
   }, [])
 
-  // Se detectar admin aqui, desloga e volta à home sem alterar a ordem de hooks
+  // Se detectar admin aqui, redireciona para a área de admin sem deslogar
   useEffect(() => {
     try {
       const t = (localStorage.getItem("userType") || "").toLowerCase()
-      if (t === "admin") {
-        try {
-          localStorage.removeItem("userType")
-          localStorage.removeItem("userName")
-          localStorage.removeItem("userBlock")
-          localStorage.removeItem("userApartment")
-          localStorage.removeItem("currentUser")
-          localStorage.removeItem("user")
-          localStorage.removeItem("token")
-          localStorage.removeItem("displayName")
-          localStorage.removeItem("userEmail")
-          localStorage.removeItem("telefone")
-        } catch {}
-        router.replace("/")
-      }
+      if (t === "admin") { router.replace("/inicio-admin") }
     } catch {}
   }, [router])
 

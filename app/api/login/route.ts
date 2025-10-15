@@ -82,7 +82,8 @@ export async function POST(req: Request) {
       apto: String((safe as any).apartamento ?? (safe as any).userApartment ?? (safe as any).apto ?? ""),
       apartamento: String((safe as any).apartamento ?? (safe as any).userApartment ?? ""),
     }
-    const token = signToken(payload, "8h")
+  // Mantém o usuário logado por mais tempo (30 dias)
+  const token = signToken(payload, "30d")
 
     return NextResponse.json({
       ok: true,

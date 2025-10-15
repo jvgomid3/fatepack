@@ -167,21 +167,7 @@ export default function EncomendasPage() {
     const t = (localStorage.getItem("userType") || "").toLowerCase()
     const admin = t === "admin"
     setIsAdmin(admin)
-    if (admin) {
-      try {
-        localStorage.removeItem("userType")
-        localStorage.removeItem("userName")
-        localStorage.removeItem("userBlock")
-        localStorage.removeItem("userApartment")
-        localStorage.removeItem("currentUser")
-        localStorage.removeItem("user")
-        localStorage.removeItem("token")
-        localStorage.removeItem("displayName")
-        localStorage.removeItem("userEmail")
-        localStorage.removeItem("telefone")
-      } catch {}
-      router.replace("/")
-    }
+    if (admin) { router.replace("/inicio-admin") }
   }, [router])
 
   // Importante: não retornar antes de chamar todos os hooks;
