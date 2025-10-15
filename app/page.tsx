@@ -29,6 +29,18 @@ function formatPhoneBR(input: string): string {
 }
 
 export default function HomePage() {
+  // Se já estiver autenticado (token no localStorage), redireciona direto para a área logada
+  React.useEffect(() => {
+    try {
+      const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!t) return
+      const role = (localStorage.getItem('userType') || '').toLowerCase()
+      const dest = role === 'admin' ? '/inicio-admin' : '/inicio'
+      if (window.location.pathname !== dest) {
+        window.location.replace(dest)
+      }
+    } catch {}
+  }, [])
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     name: "",

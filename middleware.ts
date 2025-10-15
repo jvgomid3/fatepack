@@ -13,16 +13,3 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = { matcher: ["/api/:path*"] }
-
-const handleBuscar = async () => {
-  setCaMsg(""); setCaFound(null);
-  try {
-    const res = await fetch(`/api/usuario?email=${encodeURIComponent(caEmail)}`)
-    console.log("GET /api/usuario status:", res.status)
-    const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.error || "Usuário não encontrado")
-    setCaFound(data)
-  } catch (e: any) {
-    setCaMsg(e?.message || "Erro ao buscar usuário")
-  }
-}

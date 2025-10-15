@@ -235,6 +235,7 @@ export default function EncomendasPage() {
       localStorage.removeItem("userApartment")
       localStorage.removeItem("currentUser")
       localStorage.removeItem("user")
+      localStorage.removeItem("token")
     } catch {}
     router.replace("/")
   // removido reload para evitar flash de layout antigo
