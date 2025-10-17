@@ -174,14 +174,8 @@ export default function EncomendasPage() {
   // Importante: não retornar antes de chamar todos os hooks;
   // o retorno condicional será feito mais abaixo, após os hooks.
 
-  // Base: admin vê todas; morador vê apenas dele (bloco/apto)
-  const base = isAdmin
-    ? encomendas
-    : encomendas.filter((enc) => {
-        const okBloco = myBlock ? enc.bloco === myBlock : false
-        const okApt = myApt ? enc.apartamento === myApt : false
-        return okBloco && okApt
-      })
+  // Base: admin vê todas; morador vê baseado na API que já filtra por vínculos temporais
+  const base = encomendas
 
   // Helper para obter chave AAAA-MM a partir da data (aceita ISO ou BR dd/mm/aaaa)
   const monthKeyFromDate = (value?: string) => {
