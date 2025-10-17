@@ -201,7 +201,7 @@ export async function POST(req: Request) {
     // data_entrada = agora - 3 horas, formato YYYY-MM-DD HH:mm:ss
     const d = new Date(Date.now() - 3 * 60 * 60 * 1000)
     const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-    const ts = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+    const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 
     const linkIns = await client
       .from("usuario_apartamento")
@@ -306,9 +306,12 @@ export async function PUT(req: Request) {
     // Handle apartment transition if needed
     if (apartmentChanged) {
       const userId = currentUser.id_usuario
+      // Generate Brazilian time (UTC-3) - use local methods after adjusting
       const now = new Date()
+      const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000)) // Subtract 3 hours from UTC
       const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-      const timestamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`
+      // Use getFullYear() instead of getUTCFullYear() since we already adjusted the time
+      const timestamp = `${brazilTime.getFullYear()}-${pad(brazilTime.getMonth() + 1)}-${pad(brazilTime.getDate())} ${pad(brazilTime.getHours())}:${pad(brazilTime.getMinutes())}:${pad(brazilTime.getSeconds())}`
 
       // 1) Close current apartment vinculos by setting data_saida = NOW()
       const closeResult = await client
