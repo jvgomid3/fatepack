@@ -50,7 +50,7 @@ export default function InicioAdminPage() {
   return (
     <>
       <AdminGate />
-      <div className="container" ref={containerRef}>
+  <div className="container inicio-admin" ref={containerRef}>
         <div className="main-content">
           {/* Top bar com ←] Sair à esquerda e "Página Inicial" à direita (igual à /inicio) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -79,7 +79,7 @@ export default function InicioAdminPage() {
               href="/historico"
               className="card card-historico"
               title="Histórico de Encomendas"
-              style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #bbf7d0 60%, #86efac 100%)" }}
+              style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%)" }}
             >
               <div className="card-inner">
                 <History className="card-icon" aria-hidden="true" />
@@ -92,7 +92,7 @@ export default function InicioAdminPage() {
               href="/registrar"
               className="card card-registrar"
               title="Registrar Encomenda"
-              style={{ background: "linear-gradient(135deg, #eff6ff 0%, #bfdbfe 60%, #93c5fd 100%)" }}
+              style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)" }}
             >
               <div className="card-inner">
                 <Package className="card-icon" aria-hidden="true" />
@@ -106,10 +106,10 @@ export default function InicioAdminPage() {
                 href="/moradores"
                 className="card card-moradores"
                 title="Gestão de Moradores"
-                style={{ background: "linear-gradient(135deg, #faf5ff 0%, #e9d5ff 60%, #d8b4fe 100%)" }}
+                style={{ background: "linear-gradient(135deg, #0e99d9ff 0%, #0370a7ff 60%, #0d5277ff 100%)" }}
               >
                 <div className="card-inner">
-                  <span className="card-icon" aria-hidden="true" style={{ fontSize: 22, lineHeight: 1 }}>👤</span>
+                  <UserRound className="card-icon" aria-hidden="true" />
                   <div className="card-title">Gestão de Moradores</div>
                   <div className="card-desc">Crie, edite e gerencie moradores</div>
                 </div>
@@ -120,7 +120,7 @@ export default function InicioAdminPage() {
               href="/aviso"
               className="card card-aviso"
               title="Aviso"
-              style={{ background: "linear-gradient(135deg, #fefce8 0%, #fde68a 60%, #fde047 100%)" }}
+              style={{ background: "linear-gradient(135deg, #ca8a04 0%, #eab308 60%, #facc15 100%)" }}
             >
               <div className="card-inner">
                 <AlertTriangle className="card-icon" aria-hidden="true" />
@@ -169,30 +169,58 @@ export default function InicioAdminPage() {
         }
         .card-icon { width: 22px; height: 22px; }
         .card-title { font-weight: 800; letter-spacing: -0.2px; }
-  .card-desc { color: var(--muted-foreground); font-size: 14px; font-weight: 700; }
 
-        /* Paletas coloridas (no estilo dos cards da /inicio) */
-        .card-historico { background: linear-gradient(135deg, #f0f9ff 0%, #ecfeff 35%, #ffffff 100%); }
-        .card-registrar { background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 35%, #ffffff 100%); }
-        .card-moradores { background: linear-gradient(135deg, #f7f9fc 0%, #e6f6ff 35%, #ffffff 100%); }
-        .card-aviso { background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 35%, #ffffff 100%); }
+        /* Paletas coloridas profissionais */
+        .card-historico { 
+          background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+          border-color: rgba(37, 99, 235, 0.3);
+        }
+        .card-registrar { 
+          background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%);
+          border-color: rgba(59, 130, 246, 0.3);
+        }
+        .card-moradores { 
+          background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%);
+          border-color: rgba(100, 116, 139, 0.3);
+        }
+        .card-aviso { 
+          background: linear-gradient(135deg, #ca8a04 0%, #eab308 60%, #facc15 100%);
+          border-color: rgba(245, 158, 11, 0.3);
+        }
 
-  /* Cores por tema: ícone, título, borda e hover */
-  .card-historico { border-color: rgba(22, 163, 74, 0.18); }
-  .card-historico .card-icon, .card-historico .card-title { color: #16a34a; }
-  .card-historico:hover { box-shadow: 0 8px 24px rgba(22, 163, 74, 0.18); }
+        /* Forçar cores dos cards SOMENTE nesta página, acima de qualquer globals.css */
+  :global(.inicio-admin .card-historico .card-icon),
+  :global(.inicio-admin .card-historico .card-title) { color: #d4ddeb !important; }
+        :global(.inicio-admin .card-historico .card-desc) { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
 
-  .card-registrar { border-color: rgba(37, 99, 235, 0.18); }
-  .card-registrar .card-icon, .card-registrar .card-title { color: #2563eb; }
-  .card-registrar:hover { box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18); }
+  :global(.inicio-admin .card-registrar .card-icon),
+  :global(.inicio-admin .card-registrar .card-title) { color: #d4ddeb !important; }
+        :global(.inicio-admin .card-registrar .card-desc) { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
 
-  .card-moradores { border-color: rgba(124, 58, 237, 0.18); }
-  .card-moradores .card-icon, .card-moradores .card-title { color: #7c3aed; }
-  .card-moradores:hover { box-shadow: 0 8px 24px rgba(124, 58, 237, 0.18); }
+  :global(.inicio-admin .card-moradores .card-icon),
+  :global(.inicio-admin .card-moradores .card-title) { color: #d4ddeb !important; }
+        :global(.inicio-admin .card-moradores .card-desc) { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
 
-  .card-aviso { border-color: rgba(234, 179, 8, 0.22); }
-  .card-aviso .card-icon, .card-aviso .card-title { color: #eab308; }
-  .card-aviso:hover { box-shadow: 0 8px 24px rgba(234, 179, 8, 0.20); }
+        :global(.inicio-admin .card-aviso .card-icon),
+        :global(.inicio-admin .card-aviso .card-title) { color: #000000 !important; }
+        :global(.inicio-admin .card-aviso .card-desc) { color: #374151 !important; font-size: 14px; font-weight: 700; }
+
+        /* Cores por tema: ícone, título, descrição e hover */
+        .card-historico .card-icon, .card-historico .card-title { color: #ffffff !important; }
+        .card-historico .card-desc { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
+        .card-historico:hover { box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4); }
+
+        .card-registrar .card-icon, .card-registrar .card-title { color: #ffffff !important; }
+        .card-registrar .card-desc { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
+        .card-registrar:hover { box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4); }
+
+        .card-moradores .card-icon, .card-moradores .card-title { color: #ffffff !important; }
+        .card-moradores .card-desc { color: #e2e8f0 !important; font-size: 14px; font-weight: 700; }
+        .card-moradores:hover { box-shadow: 0 8px 24px rgba(100, 116, 139, 0.3); }
+
+        .card-aviso .card-icon, .card-aviso .card-title { color: #000000 !important; }
+        .card-aviso .card-desc { color: #374151 !important; font-size: 14px; font-weight: 700; }
+        .card-aviso:hover { box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4); }
       `}</style>
     </>
   )

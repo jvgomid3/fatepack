@@ -233,7 +233,6 @@ export default function EncomendasPage() {
           try { router.refresh() } catch {}
           await new Promise((r) => setTimeout(r, 450))
         }}
-        allowWithinSelector="#filtro-mes-card"
         denyBelowSelector="#encomendas-anteriores-boundary"
       >
       <div className="container" ref={containerRef}>
