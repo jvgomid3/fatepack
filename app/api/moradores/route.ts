@@ -242,6 +242,26 @@ export async function PUT(req: Request) {
     if (!originalEmail && !newEmail) return NextResponse.json({ error: "EMAIL_OBRIGATORIO" }, { status: 400 })
     const identifierEmail = originalEmail || newEmail
 
+    // Use admin client for full control over usuario_apartamento operations
+    const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supaUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+    const client = adminKey && supaUrl
+      ? createClient(supaUrl, adminKey, { auth: { persistSession: false } })
+      : getSupabaseClient()
+
+    // Get current user data first to detect apartment changes
+    const { data: currentUser, error: lookupError } = await client
+      .from("usuario")
+      .select("id_usuario, nome, email, telefone, tipo, bloco, apto")
+      .eq("email", identifierEmail)
+      .maybeSingle()
+
+    if (lookupError) {
+      console.error("/api/moradores PUT lookup error:", lookupError.message)
+      return NextResponse.json({ error: "DB_ERROR", detail: lookupError.message }, { status: 500 })
+    }
+    if (!currentUser) return NextResponse.json({ error: "USUARIO_NAO_ENCONTRADO" }, { status: 404 })
+
     const toUpdate: Partial<UsuarioRow> = {}
     if (body?.nome !== undefined) toUpdate.nome = String(body?.nome || "").trim()
     if (body?.telefone !== undefined) toUpdate.telefone = sanitizeStr(body?.telefone) || null
@@ -253,7 +273,14 @@ export async function PUT(req: Request) {
       toUpdate.email = newEmail
     }
 
-    const { data, error, status } = await getSupabaseClient()
+    // Check if bloco or apartamento changed - if so, we need to handle apartment transition
+    const oldBloco = currentUser.bloco
+    const oldApto = currentUser.apto
+    const newBloco = toUpdate.bloco !== undefined ? toUpdate.bloco : oldBloco
+    const newApto = toUpdate.apto !== undefined ? toUpdate.apto : oldApto
+    const apartmentChanged = (newBloco !== oldBloco || newApto !== oldApto) && newBloco && newApto
+
+    const { data, error, status } = await client
       .from("usuario")
       .update(toUpdate)
       .eq("email", identifierEmail)
@@ -276,6 +303,111 @@ export async function PUT(req: Request) {
     }
     if (!data) return NextResponse.json({ error: "USUARIO_NAO_ENCONTRADO" }, { status: 404 })
 
+    // Handle apartment transition if needed
+    if (apartmentChanged) {
+      const userId = currentUser.id_usuario
+      const now = new Date()
+      const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
+      const timestamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`
+
+      // 1) Close current apartment vinculos by setting data_saida = NOW()
+      const closeResult = await client
+        .from("usuario_apartamento")
+        .update({ data_saida: timestamp })
+        .eq("id_usuario", userId)
+        .is("data_saida", null)
+
+      if (closeResult.error) {
+        console.error("/api/moradores PUT close vinculos error:", closeResult.error.message)
+        // Don't fail the whole operation, but log it
+      }
+
+      // 2) Resolve/create new bloco and apartamento IDs
+      let id_bloco: number | null = null
+      {
+        const { data: b1, error: be1 } = await client
+          .from("bloco")
+          .select("id_bloco")
+          .eq("nome", newBloco!)
+          .maybeSingle()
+        if (be1 && be1.message) console.error("/api/moradores PUT bloco lookup:", be1.message)
+        if (b1 && (b1 as any).id_bloco != null) {
+          id_bloco = Number((b1 as any).id_bloco)
+        } else {
+          const { data: bins, error: be2 } = await client
+            .from("bloco")
+            .insert({ nome: newBloco! })
+            .select("id_bloco")
+            .single()
+          if (be2) {
+            console.error("/api/moradores PUT bloco insert:", be2.message)
+          } else {
+            id_bloco = Number((bins as any).id_bloco)
+          }
+        }
+      }
+
+      let id_apartamento: number | null = null
+      if (id_bloco) {
+        const digits = newApto!.replace(/\D/g, "")
+        const asNumber = digits ? Number(digits) : null
+        // Try string first
+        let a1Res = await client
+          .from("apartamento")
+          .select("id_apartamento")
+          .eq("numero", newApto!)
+          .eq("id_bloco", id_bloco)
+          .maybeSingle()
+        if (a1Res.error && a1Res.error.message) console.error("/api/moradores PUT apartamento lookup(string):", a1Res.error.message)
+        if (a1Res.data && (a1Res.data as any).id_apartamento != null) {
+          id_apartamento = Number((a1Res.data as any).id_apartamento)
+        } else {
+          // Try number if different from string
+          if (asNumber !== null && asNumber !== undefined && String(asNumber) !== newApto!) {
+            const a2Res = await client
+              .from("apartamento")
+              .select("id_apartamento")
+              .eq("numero", asNumber as any)
+              .eq("id_bloco", id_bloco)
+              .maybeSingle()
+            if (a2Res.error && a2Res.error.message) console.error("/api/moradores PUT apartamento lookup(number):", a2Res.error.message)
+            if (a2Res.data && (a2Res.data as any).id_apartamento != null) {
+              id_apartamento = Number((a2Res.data as any).id_apartamento)
+            }
+          }
+          if (!id_apartamento) {
+            // Create new apartamento
+            const toInsertNumero: any = asNumber !== null && asNumber !== undefined ? asNumber : newApto!
+            const { data: ains, error: ae } = await client
+              .from("apartamento")
+              .insert({ numero: toInsertNumero, id_bloco })
+              .select("id_apartamento")
+              .single()
+            if (ae) {
+              console.error("/api/moradores PUT apartamento insert:", ae.message)
+            } else {
+              id_apartamento = Number((ains as any).id_apartamento)
+            }
+          }
+        }
+      }
+
+      // 3) Create new vinculos with data_entrada = NOW()
+      if (id_apartamento) {
+        const linkResult = await client
+          .from("usuario_apartamento")
+          .insert({ id_usuario: userId, id_apartamento, data_entrada: timestamp })
+        if (linkResult.error) {
+          // Check if it's a duplicate - that's OK
+          const em = (linkResult.error.message || "").toLowerCase()
+          const isDup = linkResult.error.code === "23505" || em.includes("duplicate") || em.includes("unique")
+          if (!isDup) {
+            console.error("/api/moradores PUT new vinculo insert:", linkResult.error.message)
+          }
+        }
+      }
+    }
+
     const item = data
       ? {
           nome: data.nome,
@@ -286,7 +418,7 @@ export async function PUT(req: Request) {
           apartamento: data.apto,
         }
       : null
-    return NextResponse.json({ ok: true, item, status })
+    return NextResponse.json({ ok: true, item, status, apartmentTransitioned: apartmentChanged })
   } catch (e: any) {
     console.error("/api/moradores PUT error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
