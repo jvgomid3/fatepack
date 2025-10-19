@@ -395,7 +395,7 @@ export default function MoradoresPage() {
     pushRange(11, 14)
     pushRange(21, 24)
     pushRange(31, 34)
-    pushRange(41, 44)
+    // pushRange(41, 44)
     return nums
   }, [])
 
