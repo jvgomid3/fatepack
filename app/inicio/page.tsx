@@ -6,8 +6,8 @@ import { Mail, UserRound, ClipboardList, Home, Package, LogOut } from "lucide-re
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { enablePushNotifications } from "../../lib/pushClient"
-import { setBadge, clearBadge } from "../../lib/badging"
 import PullToRefresh from "../components/PullToRefresh"
+import { setBadge, clearBadge } from "../../lib/badging"
 import { performLogout } from "../../lib/logout"
 
 export default function InicioPage() {
@@ -92,7 +92,7 @@ export default function InicioPage() {
         setUserPhone(storedPhone)
   setUserEmail(localStorage.getItem("userEmail") || "")
 
-        // tenta buscar TODOS os dados atualizados do usuário no banco
+        // tenta buscar o nome atualizado no banco a partir do email salvo
         const email = localStorage.getItem("userEmail") || ""
         const fallbackName = localStorage.getItem("userName") || ""
         if (email || fallbackName) {
@@ -109,29 +109,6 @@ export default function InicioPage() {
               if (j?.email) {
                 setUserEmail(j.email)
                 try { localStorage.setItem("userEmail", j.email) } catch {}
-              }
-              // Atualiza bloco e apartamento em tempo real
-              if (j?.bloco) {
-                setUserBlock(j.bloco)
-                try { localStorage.setItem("userBlock", j.bloco) } catch {}
-              }
-              if (j?.apartamento || j?.apto) {
-                const apt = j.apartamento || j.apto || ""
-                setUserApartment(apt)
-                try { localStorage.setItem("userApartment", apt) } catch {}
-              }
-              // Atualiza telefone se disponível
-              if (j?.telefone) {
-                setUserPhone(j.telefone)
-                try { 
-                  localStorage.setItem("userPhone", j.telefone)
-                  localStorage.setItem("telefone", j.telefone)
-                } catch {}
-              }
-              // Atualiza tipo se disponível
-              if (j?.tipo) {
-                setUserType(j.tipo)
-                try { localStorage.setItem("userType", j.tipo) } catch {}
               }
             })
             .catch(() => {})
@@ -284,27 +261,26 @@ export default function InicioPage() {
     <>
       {/* Badge fixo removido a pedido: não exibir "Área do Morador" nesta página */}
 
+  <PullToRefresh onRefresh={handleRefresh} denyBelowSelector="#moradores-top-boundary">
   <div className="container" ref={containerRef}>
-        {/* Região com pull-to-refresh: do topo até antes do card de Moradores */}
-        <PullToRefresh onRefresh={handleRefresh} denyBelowSelector="#moradores-top-boundary">
-          {/* título superior à direita, no mesmo lugar da saudação de /encomendas */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
-            <span
-              onClick={handleTitleTap}
-              style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)", userSelect: 'none', WebkitUserSelect: 'none' as any }}
-              title="Toque 3x para abrir a página de debug"
-            >
-              Página Inicial
-            </span>
-          </div>
+        {/* título superior à direita, no mesmo lugar da saudação de /encomendas */}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "1rem" }}>
+          <span
+            onClick={handleTitleTap}
+            style={{ fontFamily: "inherit", fontWeight: 700, color: "var(--primary, #06b6d4)", userSelect: 'none', WebkitUserSelect: 'none' as any }}
+            title="Toque 3x para abrir a página de debug"
+          >
+            Página Inicial
+          </span>
+        </div>
 
-          <div className="header" style={{ position: "relative", marginTop: 42 }}>
-            <h1>Olá, {userName ? String(userName).split(" ")[0] : "Usuário"}!</h1>
-            <p>Bem-vindo ao FatePack!</p>
-            {/* Lightweight CTA to enable push notifications for residents */}
-            <div style={{ marginTop: 8 }}>
-              <button
-                onClick={async () => {
+        <div className="header" style={{ position: "relative", marginTop: 42 }}>
+          <h1>Olá, {userName ? String(userName).split(" ")[0] : "Usuário"}!</h1>
+          <p>Bem-vindo ao FatePack!</p>
+          {/* Lightweight CTA to enable push notifications for residents */}
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={async () => {
                 if (pushEnabled) return // evita re-solicitar, mas mantém gesto de long-press ativo
                 const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
                 try {
@@ -338,15 +314,15 @@ export default function InicioPage() {
                     setPushEnabled(!!sub)
                   } catch {}
                 }
-                }}
-                onMouseDown={startDebugTimer}
-                onMouseUp={cancelDebugTimer}
-                onMouseLeave={cancelDebugTimer}
-                onTouchStart={startDebugTimer}
-                onTouchEnd={cancelDebugTimer}
-                onContextMenu={(e) => { e.preventDefault() }}
-                aria-disabled={pushEnabled}
-                style={{
+              }}
+              onMouseDown={startDebugTimer}
+              onMouseUp={cancelDebugTimer}
+              onMouseLeave={cancelDebugTimer}
+              onTouchStart={startDebugTimer}
+              onTouchEnd={cancelDebugTimer}
+              onContextMenu={(e) => { e.preventDefault() }}
+              aria-disabled={pushEnabled}
+              style={{
                 fontSize: 12,
                 padding: '6px 10px',
                 borderRadius: 6,
@@ -360,15 +336,15 @@ export default function InicioPage() {
                 WebkitUserSelect: 'none',
                 WebkitTouchCallout: 'none',
                 touchAction: 'manipulation',
-                }}
-              >
-                {pushEnabled ? 'Notificações ativas' : 'Ativar notificações'}
-              </button>
-            </div>
+              }}
+            >
+              {pushEnabled ? 'Notificações ativas' : 'Ativar notificações'}
+            </button>
           </div>
+        </div>
 
-          <div className="main-content">
-            <div className="card dados-card" style={{ paddingBottom: 16 }}>
+        <div className="main-content">
+          <div className="card dados-card" style={{ paddingBottom: 16 }}>
             {/* Seção "Seus Dados" */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
               <ClipboardList className="section-icon" aria-hidden="true" />
@@ -409,11 +385,9 @@ export default function InicioPage() {
                 </div>
               </div>
             </div>
-            </div>
           </div>
-        </PullToRefresh>
 
-        {/* Moradores do Apartamento */}
+          {/* Moradores do Apartamento */}
           <div id="moradores-top-boundary" className="card moradores-card" style={{ marginTop: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <span aria-hidden="true" style={{ fontSize: 18 }}>👥</span>
@@ -539,7 +513,7 @@ export default function InicioPage() {
             )}
           </nav>
         )}
-
+  </div>
 
       <style jsx>{`
          .user-greeting {
@@ -689,7 +663,7 @@ export default function InicioPage() {
         .morador-item { background: rgba(99, 102, 241, 0.08); }
         .alert-item { background: rgba(245, 158, 11, 0.08); }
       `}</style>
-      
+      </PullToRefresh>
     </>
   )
 }
