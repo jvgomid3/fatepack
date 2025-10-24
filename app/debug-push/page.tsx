@@ -96,7 +96,7 @@ export default function DebugPushPage() {
         {result ? JSON.stringify(result, null, 2) : 'Sem resultados ainda.'}
       </pre>
       <ol style={{marginTop:12, color:'#475569'}}>
-        <li>1) No iPhone, use o app instalado na Tela de Início (PWA), não o Safari aberto.</li>
+        <li>1) No seu smartphone, use o app instalado na Tela de Início (PWA), não o Safari aberto.</li>
         <li>2) Toque em "Reinscrever/sincronizar assinatura" para vincular sua inscrição ao usuário logado.</li>
         <li>3) Toque em "Listar inscrições (GET)"; deve mostrar count ≥ 1.</li>
         <li>4) Toque em "Enviar push de teste (POST)" e deixe o app em segundo plano por alguns segundos para ver a notificação.</li>

@@ -299,11 +299,11 @@ export default function InicioPage() {
                     // Provide a minimal feedback for common cases
                     const reason = (res as any)?.reason
                     if (reason === 'UNSUPPORTED') {
-                      alert('Seu navegador não suporta notificações push. No iPhone, instale o app na tela inicial (Compartilhar > Adicionar à Tela de Início).')
+                      alert('Seu navegador não suporta notificações push. No seu smartphone, adicione o app na tela inicial (Compartilhar > Adicionar à Tela de Início).')
                     } else if (reason === 'DENIED') {
-                      alert('Permissão de notificações negada. Vá em Ajustes do iPhone > Notificações > FatePack e ative, ou reinstale o app PWA.')
+                      alert('Permissão de notificações negada. Vá em Configurações > Notificações > FatePack e ative, ou reinstale o app.')
                     } else if (reason === 'MISSING_VAPID') {
-                      alert('Chave de push não configurada (VAPID). Avise o administrador para configurar as variáveis de ambiente.')
+                      alert('Chave de push não configurada. Avise o administrador para configurar as variáveis de ambiente.')
                     }
                   }
                 } catch (e) {
