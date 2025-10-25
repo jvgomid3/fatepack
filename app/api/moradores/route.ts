@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getUserFromRequest } from "../../../lib/server/auth"
 import { getSupabaseClient } from "../../../lib/supabaseClient"
 import { createClient } from "@supabase/supabase-js"
 import bcrypt from "bcryptjs"
@@ -21,6 +22,12 @@ function sanitizeStr(v: any): string | undefined {
 }
 
 export async function GET(req: Request) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  const allowed = ["admin", "porteiro", "síndico", "sindico"]
+  if (!allowed.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
   try {
     const url = new URL(req.url)
     const nome = sanitizeStr(url.searchParams.get("nome"))
@@ -64,6 +71,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  if (!["admin", "porteiro", "síndico", "sindico"].includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
   try {
     const body = await req.json().catch(() => null)
     // Default password for new users: "1234"
@@ -235,6 +247,11 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  if (!["admin", "porteiro", "síndico", "sindico"].includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
   try {
     const body = await req.json().catch(() => null)
     const originalEmail = String(body?.originalEmail || body?.oldEmail || "").trim().toLowerCase()
@@ -429,6 +446,11 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  if (!["admin", "porteiro", "síndico", "sindico"].includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
   try {
     const url = new URL(req.url)
     const email = sanitizeStr(url.searchParams.get("email")) || undefined

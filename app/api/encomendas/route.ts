@@ -268,11 +268,23 @@ export async function POST(req: Request) {
           url: "/encomendas",
           tag: "new-encomenda",
         }
-        await Promise.allSettled(
+        const settled = await Promise.allSettled(
           subs.map((s: any) =>
             sendPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
           )
         )
+        // Log any failures to aid debugging (expired/invalid subscriptions etc.)
+        try {
+          const failures = settled
+            .map((r, i) => ({ r, i }))
+            .filter(({ r }) => r.status === "rejected")
+            .map(({ r, i }) => ({ index: i, reason: (r as any).reason }))
+          if (failures.length) {
+            console.error("Push send failures for new encomenda:", failures)
+          }
+        } catch (logErr) {
+          // ignore logging errors
+        }
       }
     } catch (notifyErr) {
       // ignore push errors

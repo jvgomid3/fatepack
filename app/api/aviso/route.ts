@@ -1,6 +1,7 @@
 export const runtime = "nodejs"
 
 import { NextRequest } from "next/server"
+import { getUserFromRequest } from "../../../lib/server/auth"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 import { sendPush } from "../../../lib/server/push"
 
@@ -77,6 +78,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = getUserFromRequest(req)
+  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  if (role !== "admin") return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
+
   try {
     const body = await req.json().catch(() => ({}))
     const titulo = String(body?.titulo || "").trim()

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
+import { getUserFromRequest } from "../../../lib/server/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -40,6 +41,11 @@ function formatBRDateTimeSaoPaulo(iso: string): string {
 }
 
 export async function POST(req: Request) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = String(user?.tipo || "").toLowerCase()
+  if (!["admin", "porteiro", "síndico", "sindico"].includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
   try {
     const body = await req.json().catch(() => ({}))
     const id_encomenda = Number(body?.id_encomenda)
@@ -69,8 +75,14 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const user = getUserFromRequest(req)
+    // For GET of retiradas, require admin role
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const role = String(user?.tipo || "").toLowerCase()
+    if (role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
     const { data, error } = await getSupabaseAdmin()
       .from("retirada")
       .select("id_retirada, id_encomenda, nome_retirou, data_retirada")

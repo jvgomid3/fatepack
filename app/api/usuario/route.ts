@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseClient } from "../../../lib/supabaseClient"
+import { getUserFromRequest } from "../../../lib/server/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -8,6 +9,21 @@ export async function GET(req: Request) {
   const email = String(url.searchParams.get("email") || "").trim().toLowerCase()
   const nome = String(url.searchParams.get("nome") || "").trim()
   if (!email && !nome) return NextResponse.json({ error: "Informe email ou nome" }, { status: 400 })
+
+  // Require authentication: only admins/porteiros/síndicos or the user himself can fetch by email.
+  const user = getUserFromRequest(req)
+  const role = String(user?.tipo || "").toLowerCase()
+  const isPrivileged = ["admin", "porteiro", "síndico", "sindico"].includes(role)
+  if (email) {
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // allow if privileged or requesting their own record
+    if (!isPrivileged && String(user?.email || "").toLowerCase() !== email) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+  } else {
+    // nome-based searches are admin-only
+    if (!user || !isPrivileged) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
   try {
     const supabase = getSupabaseClient()
