@@ -110,6 +110,29 @@ export default function InicioPage() {
                 setUserEmail(j.email)
                 try { localStorage.setItem("userEmail", j.email) } catch {}
               }
+              // Atualiza bloco e apartamento em tempo real (quando admin altera dados)
+              if (j?.bloco) {
+                setUserBlock(j.bloco)
+                try { localStorage.setItem("userBlock", j.bloco) } catch {}
+              }
+              if (j?.apartamento || j?.apto) {
+                const apt = j.apartamento || j.apto || ""
+                setUserApartment(apt)
+                try { localStorage.setItem("userApartment", apt) } catch {}
+              }
+              // Atualiza telefone se disponível
+              if (j?.telefone) {
+                setUserPhone(j.telefone)
+                try {
+                  localStorage.setItem("userPhone", j.telefone)
+                  localStorage.setItem("telefone", j.telefone)
+                } catch {}
+              }
+              // Atualiza tipo se disponível
+              if (j?.tipo) {
+                setUserType(j.tipo)
+                try { localStorage.setItem("userType", j.tipo) } catch {}
+              }
             })
             .catch(() => {})
         }
