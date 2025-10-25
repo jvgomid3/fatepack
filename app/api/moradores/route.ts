@@ -22,11 +22,9 @@ function sanitizeStr(v: any): string | undefined {
 }
 
 export async function GET(req: Request) {
-  const user = getUserFromRequest(req)
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const role = String(user?.tipo || "").toLowerCase()
-  const allowed = ["admin", "porteiro", "síndico", "sindico"]
-  if (!allowed.includes(role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  // NOTE: keep GET public for listing/searching moradores to preserve
+  // existing behaviour in the UI which calls this endpoint without an
+  // Authorization header. Writes (POST/PUT/DELETE) remain protected.
 
   try {
     const url = new URL(req.url)

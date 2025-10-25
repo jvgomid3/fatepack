@@ -220,7 +220,8 @@ export default function MoradoresPage() {
     await new Promise((res) => setTimeout(res, 0))
     const start = Date.now()
     try {
-      const r = await fetch("/api/moradores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      const token = String(localStorage.getItem("token") || "")
+      const r = await fetch("/api/moradores", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(payload) })
       const j = await r.json().catch(() => null)
       const elapsed = Date.now() - start
       if (elapsed < 3000) {
@@ -279,7 +280,8 @@ export default function MoradoresPage() {
       }
       if (!payload.email && !originalEmail) { setMsg("E-mail é obrigatório para atualizar"); return }
       const body = { ...payload, ...(originalEmail ? { originalEmail } : {}) }
-      const r = await fetch("/api/moradores", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+  const token = String(localStorage.getItem("token") || "")
+  const r = await fetch("/api/moradores", { method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) })
       const j = await r.json().catch(() => null)
       if (!r.ok) {
         if (r.status === 409 || j?.error === "EMAIL_JA_CADASTRADO") {
@@ -354,7 +356,8 @@ export default function MoradoresPage() {
     setMsg("")
     setMsgType(null)
     try {
-      const r = await fetch(`/api/moradores?email=${encodeURIComponent(email)}`, { method: "DELETE" })
+  const token = String(localStorage.getItem("token") || "")
+  const r = await fetch(`/api/moradores?email=${encodeURIComponent(email)}`, { method: "DELETE", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       const j = await r.json().catch(() => null)
       if (!r.ok) {
         if (r.status === 404 || j?.error === "USUARIO_NAO_ENCONTRADO") {
