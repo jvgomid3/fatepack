@@ -30,9 +30,16 @@ export async function enablePushNotifications(getToken: () => string | null) {
 
   let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   if (!vapidPublicKey) {
-    // Try runtime fetch from API as a fallback
+    // Try runtime fetch from API as a fallback. Include Authorization header
+    // if a token is available so the endpoint can be protected.
     try {
-      const resp = await fetch('/api/push/public-key', { cache: 'no-store' })
+      const token = typeof getToken === 'function' ? getToken() : null
+      const resp = await fetch('/api/push/public-key', {
+        cache: 'no-store',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
       const json: any = await resp.json().catch(() => null)
       if (json?.ok && json?.publicKey) {
         vapidPublicKey = json.publicKey
