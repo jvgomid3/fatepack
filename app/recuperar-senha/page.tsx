@@ -62,7 +62,11 @@ export default function RecuperarSenhaPage() {
     }
     setChecking(true)
     try {
-      const res = await fetch(`/api/usuario?email=${encodeURIComponent(String(email).trim().toLowerCase())}`, { cache: "no-store" })
+      const res = await fetch(`/api/auth/verificar-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: String(email).trim().toLowerCase() }),
+      })
       if (!res.ok) {
         setError("❌  Usuário não encontrado.")
         return
@@ -131,12 +135,41 @@ export default function RecuperarSenhaPage() {
         setError(body?.error || `Erro ao redefinir senha (${res.status})`)
         return
       }
+      // sucesso: atualizou no banco => agora loga automaticamente usando /api/login
+      try {
+        const loginRes = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: String(email).trim().toLowerCase(), password: newPassword }),
+        })
+        const loginBody = await loginRes.json().catch(() => null)
+        if (!loginRes.ok) {
+          // Reset succeeded but login failed - show success and instruct manual login
+          setSuccess("Senha redefinida com sucesso! Faça login com sua nova senha.")
+          setNewPassword("")
+          setConfirmPassword("")
+          return
+        }
 
-  // sucesso: atualizou no banco (não redirecionar automaticamente)
-  setSuccess("Senha redefinida com sucesso!")
-      setNewPassword("")
-      setConfirmPassword("")
-      // aguarda 1.2s e retorna ao login
+        // Persist session in localStorage (same keys as /app/login/page.tsx)
+        localStorage.setItem("token", loginBody.token || "")
+        localStorage.setItem("userName", loginBody.user?.nome || loginBody.user?.displayName || String(email).trim())
+        localStorage.setItem("displayName", loginBody.user?.nome || loginBody.user?.displayName || String(email).trim())
+        localStorage.setItem("userType", loginBody.user?.tipo || loginBody.tipo || "user")
+        if (loginBody.user?.telefone) localStorage.setItem("userPhone", loginBody.user.telefone)
+        if (loginBody.user?.bloco) localStorage.setItem("userBlock", String(loginBody.user.bloco))
+        if (loginBody.user?.apto || loginBody.user?.apartamento) localStorage.setItem("userApartment", String(loginBody.user.apto ?? loginBody.user.apartamento))
+        if (email) localStorage.setItem("userEmail", String(email).trim().toLowerCase())
+
+        // redirect according to server suggestion
+        const role = String(loginBody?.user?.tipo || loginBody?.tipo || "").toLowerCase()
+        router.push(loginBody.redirect || (role === "admin" ? "/inicio-admin" : "/inicio"))
+      } catch (loginErr) {
+        console.error("Login after reset failed:", loginErr)
+        setSuccess("Senha redefinida com sucesso! Faça login com sua nova senha.")
+        setNewPassword("")
+        setConfirmPassword("")
+      }
     } catch (err) {
       console.error("reset error:", err)
       setError("Falha ao redefinir senha. Tente novamente.")

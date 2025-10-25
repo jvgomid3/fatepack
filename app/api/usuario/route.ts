@@ -9,20 +9,23 @@ export async function GET(req: Request) {
   const email = String(url.searchParams.get("email") || "").trim().toLowerCase()
   const nome = String(url.searchParams.get("nome") || "").trim()
   if (!email && !nome) return NextResponse.json({ error: "Informe email ou nome" }, { status: 400 })
-
-  // Require authentication: only admins/porteiros/síndicos or the user himself can fetch by email.
+  // Require authentication for any access to this endpoint.
+  // Previously we allowed unauthenticated email lookups to support account
+  // creation flows, but that exposed user data publicly. Enforce JWT for all
+  // requests and keep name searches restricted to privileged roles.
   const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const role = String(user?.tipo || "").toLowerCase()
   const isPrivileged = ["admin", "porteiro", "síndico", "sindico"].includes(role)
   if (email) {
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     // allow if privileged or requesting their own record
     if (!isPrivileged && String(user?.email || "").toLowerCase() !== email) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
   } else {
     // nome-based searches are admin-only
-    if (!user || !isPrivileged) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!isPrivileged) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   try {

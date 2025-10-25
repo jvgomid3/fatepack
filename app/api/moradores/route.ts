@@ -22,9 +22,11 @@ function sanitizeStr(v: any): string | undefined {
 }
 
 export async function GET(req: Request) {
-  // NOTE: keep GET public for listing/searching moradores to preserve
-  // existing behaviour in the UI which calls this endpoint without an
-  // Authorization header. Writes (POST/PUT/DELETE) remain protected.
+  // Require authentication for GET so this endpoint cannot be accessed
+  // anonymously via URL. This prevents information exposure when called
+  // directly from the browser address bar.
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const url = new URL(req.url)

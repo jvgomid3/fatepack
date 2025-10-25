@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   /* Updated metadata for FatePack branding */
   title: "FatePack",
   description: "Sistema para gerenciamento de encomendas em condomínios",
-  generator: 'v0.app',
   applicationName: "FatePack",
   themeColor: "#06b6d4",
   manifest: "/manifest.webmanifest",

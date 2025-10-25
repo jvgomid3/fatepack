@@ -44,13 +44,13 @@ export async function POST(req: Request) {
     console.log("[/api/login] supabase result:", { error: error ? error.message : null, found: !!data, sample: data ? { id: data.id ?? data.id_usuario, email: data.email, nome: data.nome, senha: data.senha ?? data.senha_hash ?? null } : null })
 
     if (error || !data) {
-      return NextResponse.json({ error: "Credenciais inválidas", detail: error?.message ?? "no row" }, { status: 401 })
+      return NextResponse.json({ error: "E-mail ou senha incorretos", detail: error?.message ?? "no row" }, { status: 401 })
     }
 
     // aceitar vários nomes de campo de senha e normalizar
     const storedRaw = data.senha ?? data.senha_hash ?? data.password ?? data.pass ?? null
     if (storedRaw === null || storedRaw === false || typeof storedRaw === "undefined") {
-      return NextResponse.json({ error: "Credenciais inválidas", detail: "no_password_set" }, { status: 401 })
+      return NextResponse.json({ error: "E-mail ou senha incorretos", detail: "no_password_set" }, { status: 401 })
     }
     const stored = String(storedRaw)
     let match = false
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     }
     console.log("[/api/login] compare", { usedBcrypt: /^\$2[aby]\$/.test(stored), match })
     if (!match) {
-      return NextResponse.json({ error: "Credenciais inválidas", detail: "password_mismatch" }, { status: 401 })
+      return NextResponse.json({ error: "E-mail ou senha incorretos", detail: "password_mismatch" }, { status: 401 })
     }
 
     const safe = { ...data }

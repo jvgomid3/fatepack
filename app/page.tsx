@@ -214,16 +214,40 @@ export default function HomePage() {
     setCaResetOk(false) // nova busca: volta ao estado normal
     try {
       setCaBusy(true)
-      const res = await fetch(`/api/usuario?email=${encodeURIComponent(caEmail)}`, { credentials: "include" })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        const msg = err?.error || (res.status === 404 ? "Usuário não encontrado" : "Erro ao buscar usuário")
+      // first call the public existence check to avoid hitting the protected GET when anonymous
+      const verifyRes = await fetch("/api/auth/verificar-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: caEmail }),
+      })
+
+      if (!verifyRes.ok) {
+        const err = await verifyRes.json().catch(() => null)
+        const msg = err?.error || (verifyRes.status === 404 ? "Usuário não encontrado" : "Erro ao buscar usuário")
         setCaSearchMsg(msg)
         return
       }
-      const data = await res.json().catch(() => null)
-      if (!data) throw new Error("Resposta inválida do servidor")
-      setCaFound({ ...data, telefoneFmt: formatPhoneBR(data.telefone) })
+
+      // exists: allow the user to proceed (show reset fields). If we have a token, fetch full details.
+      const token = String(localStorage.getItem("token") || "")
+      if (token) {
+        const res = await fetch(`/api/usuario?email=${encodeURIComponent(caEmail)}`, {
+          credentials: "include",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          const msg = err?.error || (res.status === 404 ? "Usuário não encontrado" : "Erro ao buscar usuário")
+          setCaSearchMsg(msg)
+          return
+        }
+        const data = await res.json().catch(() => null)
+        if (!data) throw new Error("Resposta inválida do servidor")
+        setCaFound({ ...data, telefoneFmt: formatPhoneBR(data.telefone) })
+      } else {
+        // anonymous: mark as found but don't expose private fields
+        setCaFound({ exists: true })
+      }
       setCaResetMsg("") // limpa mensagens antigas de redefinição
       setCaResetOk(false)
     } catch (e: any) {
@@ -491,41 +515,6 @@ export default function HomePage() {
 
               {caFound && (
                 <>
-                  <div className="form-group">
-                    <label className="form-label">Nome</label>
-                    <input type="text" className="form-input" value={caFound?.nome || ""} readOnly />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Telefone</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={caFound?.telefoneFmt || caFound?.telefone || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Bloco</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={caFound?.bloco ? `Bloco ${caFound.bloco}` : ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Apartamento</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={caFound?.apartamento ? `Apartamento ${caFound.apartamento}` : ""}
-                      readOnly
-                    />
-                  </div>
-
                   <div className="form-group">
                     <label className="form-label">Código de confirmação</label>
                     <input

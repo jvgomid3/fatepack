@@ -42,6 +42,10 @@ function localInputToTimestamp(v: string): string {
 
 export async function GET(req: NextRequest) {
   try {
+    // Require authentication for GET so this endpoint cannot be
+    // accessed anonymously via the browser URL. Returns 401 when no JWT.
+    const user = getUserFromRequest(req as any)
+    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
     const { searchParams } = new URL(req.url)
     const activeParam = searchParams.get("active")
     if (activeParam === "1") {
@@ -128,6 +132,11 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    // PATCH modifies avisos; require admin role like POST
+    const user = getUserFromRequest(req as any)
+    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    const role = String(user?.tipo || "").toLowerCase()
+    if (role !== "admin") return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
     const body = await req.json().catch(() => ({}))
     const id = Number(body?.id_aviso || body?.id)
     if (!id) return new Response(JSON.stringify({ error: "id_aviso é obrigatório" }), { status: 400 })

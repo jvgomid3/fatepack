@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { Pool, PoolConfig } from "pg"
+import { Pool } from "pg"
 
-function makePgConfig(): PoolConfig {
+function makePgConfig() {
   return {
     host: process.env.PGHOST || "localhost",
     port: Number(process.env.PGPORT || 5432),
@@ -15,7 +15,7 @@ function makePgConfig(): PoolConfig {
   }
 }
 
-let _pool: Pool | null = null
+let _pool: any = null
 const getPool = () => (_pool ??= new Pool(makePgConfig()))
 
 export async function GET(req: Request) {
