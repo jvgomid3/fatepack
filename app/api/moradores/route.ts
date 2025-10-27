@@ -210,14 +210,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "FALHA_VINCULO", detail: "Não foi possível resolver usuário/apartamento para vínculo." }, { status: 500 })
     }
 
-    // data_entrada = agora - 3 horas, formato YYYY-MM-DD HH:mm:ss
-    const d = new Date(Date.now() - 3 * 60 * 60 * 1000)
-    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-    const ts = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    // data_entrada = current São Paulo time (America/Sao_Paulo), formato YYYY-MM-DD HH:mm:ss
+    const _now = new Date()
+    const _fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+    const _parts: any = Object.fromEntries(_fmt.formatToParts(_now).map((p) => [p.type, p.value]))
+    const ts = `${_parts.year}-${_parts.month}-${_parts.day} ${_parts.hour}:${_parts.minute}:${_parts.second}`
 
     const linkIns = await client
       .from("usuario_apartamento")
       .insert({ id_usuario: userId, id_apartamento, data_entrada: ts })
+      .select("id_vinculo, id_usuario, id_apartamento, data_entrada, data_saida")
+      .maybeSingle()
     if (linkIns.error) {
       // Trata duplicidade como sucesso idempotente
       const em = (linkIns.error.message || "").toLowerCase()
@@ -239,7 +251,7 @@ export async function POST(req: Request) {
           apartamento: (data as any).apto,
         }
       : null
-    return NextResponse.json({ ok: true, item, vinculoCriado: true })
+    return NextResponse.json({ ok: true, item, vinculoCriado: !!(linkIns && (linkIns as any).data), vinculo: (linkIns && (linkIns as any).data) || null })
   } catch (e: any) {
     console.error("/api/moradores POST error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
@@ -323,12 +335,20 @@ export async function PUT(req: Request) {
     // Handle apartment transition if needed
     if (apartmentChanged) {
       const userId = currentUser.id_usuario
-      // Generate Brazilian time (UTC-3) - use local methods after adjusting
-      const now = new Date()
-      const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000)) // Subtract 3 hours from UTC
-      const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-      // Use getFullYear() instead of getUTCFullYear() since we already adjusted the time
-      const timestamp = `${brazilTime.getFullYear()}-${pad(brazilTime.getMonth() + 1)}-${pad(brazilTime.getDate())} ${pad(brazilTime.getHours())}:${pad(brazilTime.getMinutes())}:${pad(brazilTime.getSeconds())}`
+      // Use current São Paulo time for stored timestamps (format YYYY-MM-DD HH:mm:ss)
+      const __now = new Date()
+      const __fmt = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
+      const __parts: any = Object.fromEntries(__fmt.formatToParts(__now).map((p) => [p.type, p.value]))
+      const timestamp = `${__parts.year}-${__parts.month}-${__parts.day} ${__parts.hour}:${__parts.minute}:${__parts.second}`
 
       // 1) Close current apartment vinculos by setting data_saida = NOW()
       const closeResult = await client
@@ -413,19 +433,23 @@ export async function PUT(req: Request) {
       }
 
       // 3) Create new vinculos with data_entrada = NOW()
-      if (id_apartamento) {
-        const linkResult = await client
-          .from("usuario_apartamento")
-          .insert({ id_usuario: userId, id_apartamento, data_entrada: timestamp })
-        if (linkResult.error) {
-          // Check if it's a duplicate - that's OK
-          const em = (linkResult.error.message || "").toLowerCase()
-          const isDup = linkResult.error.code === "23505" || em.includes("duplicate") || em.includes("unique")
-          if (!isDup) {
-            console.error("/api/moradores PUT new vinculo insert:", linkResult.error.message)
+        if (id_apartamento) {
+          const linkResult = await client
+            .from("usuario_apartamento")
+            .insert({ id_usuario: userId, id_apartamento, data_entrada: timestamp })
+            .select("id_vinculo, id_usuario, id_apartamento, data_entrada, data_saida")
+            .maybeSingle()
+          if (linkResult.error) {
+            // Check if it's a duplicate - that's OK
+            const em = (linkResult.error.message || "").toLowerCase()
+            const isDup = linkResult.error.code === "23505" || em.includes("duplicate") || em.includes("unique")
+            if (!isDup) {
+              console.error("/api/moradores PUT new vinculo insert:", linkResult.error.message)
+            }
           }
+          // Attach newly created vinculo (if any) to the response below via linkResult
+          (data as any)._newVinculo = (linkResult && (linkResult as any).data) || null
         }
-      }
     }
 
     const item = data
@@ -438,7 +462,7 @@ export async function PUT(req: Request) {
           apartamento: data.apto,
         }
       : null
-    return NextResponse.json({ ok: true, item, status, apartmentTransitioned: apartmentChanged })
+  return NextResponse.json({ ok: true, item, status, apartmentTransitioned: apartmentChanged, vinculo: (data as any)._newVinculo || null })
   } catch (e: any) {
     console.error("/api/moradores PUT error:", e?.message || e)
     return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })

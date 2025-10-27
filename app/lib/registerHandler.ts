@@ -106,14 +106,26 @@ export async function registerHandler(req: Request) {
     const id_usuario = u.rows[0].id_usuario
 
     stage = "LINK_USUARIO_APARTAMENTO"
-    await client.query(
-      "INSERT INTO usuario_apartamento (id_usuario, id_apartamento) VALUES ($1,$2)",
-      [id_usuario, id_apartamento]
-    )
+    // Insert vínculo and return id_vinculo so the caller can reference the created vinculo
+    let createdVinculoId: number | null = null
+    try {
+      const linkRes = await client.query(
+        "INSERT INTO usuario_apartamento (id_usuario, id_apartamento) VALUES ($1,$2) RETURNING id_vinculo",
+        [id_usuario, id_apartamento]
+      )
+      if (linkRes && linkRes.rows && linkRes.rows[0]) createdVinculoId = linkRes.rows[0].id_vinculo
+    } catch (linkErr: any) {
+      // Trata duplicidade como sucesso idempotente (constraint UNIQUE antiga poderá causar 23505)
+      if (linkErr && linkErr.code === '23505') {
+        // ignore duplicate
+      } else {
+        throw linkErr
+      }
+    }
 
-    stage = "COMMIT"
-    await client.query("COMMIT")
-    return NextResponse.json({ ok: true, id_usuario }, { status: 201 })
+  stage = "COMMIT"
+  await client.query("COMMIT")
+  return NextResponse.json({ ok: true, id_usuario, id_vinculo: createdVinculoId }, { status: 201 })
   } catch (e: any) {
     console.error("REGISTER ERROR @", stage, e)
     await client.query("ROLLBACK")

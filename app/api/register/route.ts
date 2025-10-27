@@ -48,6 +48,7 @@ const getPool = () => {
 export async function POST(req: Request) {
   // Body
   let body: any
+  let createdVinculoId: number | null = null
   try {
     body = await req.json()
   } catch {
@@ -126,13 +127,24 @@ export async function POST(req: Request) {
     )
     const id_usuario = u.rows[0].id_usuario
 
-    await client.query(
-      "INSERT INTO usuario_apartamento (id_usuario, id_apartamento) VALUES ($1,$2)",
-      [id_usuario, id_apartamento]
-    )
+    // Insert vínculo and return id_vinculo for reference
+    try {
+      const linkInsert = await client.query(
+          "INSERT INTO usuario_apartamento (id_usuario, id_apartamento) VALUES ($1,$2) RETURNING id_vinculo",
+          [id_usuario, id_apartamento]
+        )
+      createdVinculoId = linkInsert && linkInsert.rows && linkInsert.rows[0] ? linkInsert.rows[0].id_vinculo : null
+    } catch (e: any) {
+      // If duplicate key (old unique constraint), treat as idempotent
+      if (e && e.code === '23505') {
+        // ignore
+      } else {
+        throw e
+      }
+    }
 
-    await client.query("COMMIT")
-    return NextResponse.json({ ok: true, id_usuario }, { status: 201 })
+  await client.query("COMMIT")
+  return NextResponse.json({ ok: true, id_usuario, id_vinculo: createdVinculoId }, { status: 201 })
   } catch (e: any) {
     await client.query("ROLLBACK")
     return NextResponse.json(
