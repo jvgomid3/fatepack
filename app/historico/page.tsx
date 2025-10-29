@@ -66,6 +66,49 @@ function formatBRDateTime(v?: string) {
   }).format(d)
 }
 
+// Formata uma string de timestamp para BR, assumindo que valores sem
+// timezone (ex: "2025-10-29T09:00:00") representam hora local de
+// São Paulo (UTC-3). Isto evita que o cliente interprete o horário como
+// em outro fuso e mostre -3h antes da atualização completa.
+function formatBRDateTimeAssumeSaoPaulo(v?: string) {
+  if (!v) return ""
+  // já está no formato BR
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(String(v).trim())) return String(v)
+
+  // se a string já tem um offset ('Z' ou +HH:MM / -HH:MM), usa normalmente
+  if (/[zZ]$|[+\-]\d{2}:\d{2}$/.test(v)) {
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return ""
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(d)
+  }
+
+  // Caso sem timezone (ex: 2025-10-29T09:00:00), parse manualmente e
+  // construir o instante correto assumindo UTC-3.
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/)
+  if (!m) return formatBRDateTime(v)
+  const [, yyyy, mm, dd, hh, min, ss] = m
+  // converter para UTC adicionando 3 horas (UTC-3 -> UTC)
+  const utcMillis = Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh) + 3, Number(min), Number(ss))
+  const d = new Date(utcMillis)
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d)
+}
+
 export default function HistoricoPage() {
   const router = useRouter()
   const logout = () => { performLogout(); router.replace("/") }
@@ -153,7 +196,9 @@ export default function HistoricoPage() {
         status: `Recebido por ${row.recebido_por ?? "-"}`,
         entregue: Boolean(row.retirado_por || row.data_retirada),
         retiradoPor: row.retirado_por ?? row.nome_retirou ?? "",
-        dataRetirada: formatBRDateTime(row.data_retirada ?? row.data_retirada_fmt),
+        // Use helper that assumes Sao_Paulo local time when server returns
+        // a timestamp string without timezone (common with `timestamp` cols).
+        dataRetirada: formatBRDateTimeAssumeSaoPaulo(row.data_retirada ?? row.data_retirada_fmt),
       }))
 
       setEncomendas(list)
@@ -453,9 +498,10 @@ export default function HistoricoPage() {
                               })
                               const data = await res.json().catch(() => null)
                               if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao confirmar retirada")
+                              const serverFormatted = data?.data_retirada_fmt || (data?.data_retirada ? formatBRDateTimeAssumeSaoPaulo(data?.data_retirada) : "")
                               const novas = encomendas.map((e) =>
                                 e.id === encomenda.id
-                                  ? { ...e, entregue: true, retiradoPor: String(data?.nome_retirou || nome), dataRetirada: String(data?.data_retirada_fmt || "") }
+                                  ? { ...e, entregue: true, retiradoPor: String(data?.nome_retirou || nome), dataRetirada: String(serverFormatted || "") }
                                   : e
                               )
                               setEncomendas(novas)
