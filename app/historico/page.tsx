@@ -114,6 +114,7 @@ export default function HistoricoPage() {
   const logout = () => { performLogout(); router.replace("/") }
 
   const [encomendas, setEncomendas] = useState<Encomenda[]>([])
+  const encomendasRef = useRef<Encomenda[]>(encomendas)
   const [refreshTick, setRefreshTick] = useState(0)
   const [filtroEmpresa, setFiltroEmpresa] = useState("")
   const [filtroMes, setFiltroMes] = useState(() => {
@@ -142,6 +143,9 @@ export default function HistoricoPage() {
   const [lastRetiradoPor, setLastRetiradoPor] = useState("")
   const pickupStartRef = useRef<number | null>(null)
 
+  useEffect(() => {
+    encomendasRef.current = encomendas
+  }, [encomendas])
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user") || "null")
     setUser(userData)
@@ -196,9 +200,17 @@ export default function HistoricoPage() {
         status: `Recebido por ${row.recebido_por ?? "-"}`,
         entregue: Boolean(row.retirado_por || row.data_retirada),
         retiradoPor: row.retirado_por ?? row.nome_retirou ?? "",
-        // Use helper that assumes Sao_Paulo local time when server returns
-        // a timestamp string without timezone (common with `timestamp` cols).
-        dataRetirada: formatBRDateTimeAssumeSaoPaulo(row.data_retirada ?? row.data_retirada_fmt),
+        // If we have a recent client-side locked value (just updated), prefer it
+        // to avoid a server-side formatting race that would shift the time.
+        dataRetirada: (() => {
+          try {
+            const local = encomendasRef.current.find((e) => e.id === String(row.id ?? row.id_encomenda ?? "")) as any
+            if (local && local.__clientTsLock && local.__clientTsLock > Date.now() && local.dataRetirada) {
+              return local.dataRetirada
+            }
+          } catch {}
+          return formatBRDateTimeAssumeSaoPaulo(row.data_retirada ?? row.data_retirada_fmt)
+        })(),
       }))
 
       setEncomendas(list)
