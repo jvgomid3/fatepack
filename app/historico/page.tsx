@@ -46,10 +46,24 @@ const formatarMes = (ym: string) => {
 // formata "YYYY-MM-DDTHH:mm:ssZ" -> "DD/MM/YYYY HH:mm"
 function formatBRDateTime(v?: string) {
   if (!v) return ""
+
+  // If value already looks like a formatted BR date (DD/MM/YYYY...), return as-is.
+  // This prevents re-parsing a server-formatted string and avoids locale parsing quirks.
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(String(v).trim())) return String(v)
+
   const d = new Date(v)
-  return isNaN(d.getTime())
-    ? ""
-    : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  if (isNaN(d.getTime())) return ""
+
+  // Force formatting in São Paulo timezone to match server-side formatting
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d)
 }
 
 export default function HistoricoPage() {

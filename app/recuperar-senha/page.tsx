@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { performLogout } from "../../lib/logout"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function RecuperarSenhaPage() {
   const router = useRouter()
@@ -19,6 +20,8 @@ export default function RecuperarSenhaPage() {
   const [inputCode, setInputCode] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [newPasswordVisible, setNewPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
   const [isResetLoading, setIsResetLoading] = useState(false)
   const [success, setSuccess] = useState("")
   const [error, setError] = useState("")
@@ -269,11 +272,75 @@ export default function RecuperarSenhaPage() {
                 </p>
                 <div className="form-group">
                   <label>Nova senha</label>
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="form-input" required />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={newPasswordVisible ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="form-input"
+                      required
+                      placeholder="Digite a nova senha"
+                      style={{ paddingRight: 44 }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={newPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+                      title={newPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+                      onClick={() => setNewPasswordVisible((v) => !v)}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "transparent",
+                        padding: 6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        color: "#64748b",
+                      }}
+                    >
+                      {newPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Confirme a nova senha</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input" required />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={confirmPasswordVisible ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="form-input"
+                      required
+                      placeholder="Confirme a nova senha"
+                      style={{ paddingRight: 44 }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={confirmPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+                      title={confirmPasswordVisible ? "Ocultar senha" : "Mostrar senha"}
+                      onClick={() => setConfirmPasswordVisible((v) => !v)}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                        border: "none",
+                        background: "transparent",
+                        padding: 6,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        color: "#64748b",
+                      }}
+                    >
+                      {confirmPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 {confirmPassword.length > 0 && (
                   <div className={passwordsMatch ? "pw-match" : "pw-mismatch"}>

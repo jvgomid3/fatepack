@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from "react"
-import { Building2 } from "lucide-react"
+import { Building2, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -57,6 +57,7 @@ export default function HomePage() {
   const [loginEmail, setLoginEmail] = useState("")
   const [loginSenha, setLoginSenha] = useState("")
   const [loginErr, setLoginErr] = useState("")
+  const [loginSenhaVisible, setLoginSenhaVisible] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -187,6 +188,7 @@ export default function HomePage() {
   const [caBusy, setCaBusy] = useState(false)
   const [caCodigo, setCaCodigo] = useState("")
   const [caNovaSenha, setCaNovaSenha] = useState("")
+  const [caNovaSenhaVisible, setCaNovaSenhaVisible] = useState(false)
   // mensagens separadas: busca (acima do Buscar) e redefinição (acima do botão Redefinir)
   const [caSearchMsg, setCaSearchMsg] = useState("")
   const [caResetMsg, setCaResetMsg] = useState("")
@@ -409,23 +411,50 @@ export default function HomePage() {
 
               <div className="form-group">
                 <label htmlFor="password">Senha:</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="senha"
-                  value={loginSenha}
-                  onChange={(e) => setLoginSenha(e.target.value)}
-                  placeholder="Digite sua senha"
-                  required
-                  style={{
-                    padding: "14px",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "16px",
-                    width: "100%", // garante largura total
-                    boxSizing: "border-box", // garante que padding não ultrapasse o card
-                  }}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={loginSenhaVisible ? "text" : "password"}
+                    id="password"
+                    name="senha"
+                    value={loginSenha}
+                    onChange={(e) => setLoginSenha(e.target.value)}
+                    placeholder="Digite sua senha"
+                    required
+                    style={{
+                      padding: "14px",
+                      paddingRight: "44px", // espaço para o botão do olhinho
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "16px",
+                      width: "100%", // garante largura total
+                      boxSizing: "border-box", // garante que padding não ultrapasse o card
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    aria-label={loginSenhaVisible ? "Ocultar senha" : "Mostrar senha"}
+                    title={loginSenhaVisible ? "Ocultar senha" : "Mostrar senha"}
+                    onClick={() => setLoginSenhaVisible((v) => !v)}
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: "50%",
+                      // centraliza verticalmente no meio do input
+                      transform: "translateY(-50%)",
+                      border: "none",
+                      background: "transparent",
+                      padding: 6,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      color: "#64748b",
+                    }}
+                  >
+                    {loginSenhaVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {/* Esqueci minha senha - somente no formulário de Login */}
@@ -529,14 +558,40 @@ export default function HomePage() {
 
                   <div className="form-group">
                     <label className="form-label">Nova senha</label>
-                    <input
-                      type="password"
-                      className="form-input"
-                      placeholder="Digite a nova senha"
-                      value={caNovaSenha}
-                      onChange={(e) => setCaNovaSenha(e.target.value)}
-                      required
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={caNovaSenhaVisible ? "text" : "password"}
+                        className="form-input"
+                        placeholder="Digite a nova senha"
+                        value={caNovaSenha}
+                        onChange={(e) => setCaNovaSenha(e.target.value)}
+                        required
+                        style={{ paddingRight: 44 }}
+                      />
+
+                      <button
+                        type="button"
+                        aria-label={caNovaSenhaVisible ? "Ocultar senha" : "Mostrar senha"}
+                        title={caNovaSenhaVisible ? "Ocultar senha" : "Mostrar senha"}
+                        onClick={() => setCaNovaSenhaVisible((v) => !v)}
+                        style={{
+                          position: "absolute",
+                          right: 10,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          border: "none",
+                          background: "transparent",
+                          padding: 6,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          color: "#64748b",
+                        }}
+                      >
+                        {caNovaSenhaVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   {caResetMsg && (
