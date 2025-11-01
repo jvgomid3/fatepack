@@ -510,10 +510,11 @@ export default function HistoricoPage() {
                               })
                               const data = await res.json().catch(() => null)
                               if (!res.ok) throw new Error(data?.detail || data?.error || "Erro ao confirmar retirada")
-                              const serverFormatted = data?.data_retirada_fmt || (data?.data_retirada ? formatBRDateTimeAssumeSaoPaulo(data?.data_retirada) : "")
+                              // Usar SOMENTE o timestamp formatado que vem do servidor (já está em São Paulo)
+                              const serverFormatted = data?.data_retirada_fmt || ""
                               const novas = encomendas.map((e) =>
                                 e.id === encomenda.id
-                                  ? { ...e, entregue: true, retiradoPor: String(data?.nome_retirou || nome), dataRetirada: String(serverFormatted || "") }
+                                  ? { ...e, entregue: true, retiradoPor: String(data?.nome_retirou || nome), dataRetirada: String(serverFormatted) }
                                   : e
                               )
                               setEncomendas(novas)

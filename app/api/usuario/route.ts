@@ -8,13 +8,38 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const email = String(url.searchParams.get("email") || "").trim().toLowerCase()
   const nome = String(url.searchParams.get("nome") || "").trim()
+  const checkOnly = url.searchParams.get("checkOnly") === "true"
+  
   if (!email && !nome) return NextResponse.json({ error: "Informe email ou nome" }, { status: 400 })
-  // Require authentication for any access to this endpoint.
-  // Previously we allowed unauthenticated email lookups to support account
-  // creation flows, but that exposed user data publicly. Enforce JWT for all
-  // requests and keep name searches restricted to privileged roles.
+  
   const user = getUserFromRequest(req)
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  
+  // Allow unauthenticated "checkOnly" requests for email existence check (registration flow)
+  // but return ONLY existence status without exposing any user data
+  if (!user) {
+    if (checkOnly && email) {
+      // Public endpoint: only check if email exists (no sensitive data returned)
+      try {
+        const supabase = getSupabaseClient()
+        const { data, error } = await supabase
+          .from("usuario")
+          .select("email")
+          .eq("email", email)
+          .maybeSingle()
+        
+        if (error) {
+          console.error("/api/usuario checkOnly error:", error.message)
+          return NextResponse.json({ error: "DB_ERROR" }, { status: 500 })
+        }
+        
+        return NextResponse.json({ exists: !!data }, { status: 200 })
+      } catch (e: any) {
+        console.error("/api/usuario checkOnly exception:", e?.message || e)
+        return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 })
+      }
+    }
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
   const role = String(user?.tipo || "").toLowerCase()
   const isPrivileged = ["admin", "porteiro", "síndico", "sindico"].includes(role)

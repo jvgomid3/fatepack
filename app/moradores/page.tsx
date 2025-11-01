@@ -152,7 +152,10 @@ export default function MoradoresPage() {
           setHasSearched(true)
         }
       }, 3000)
-      const r = await fetch(`/api/moradores?${qs}`)
+      const token = localStorage.getItem("token") || ""
+      const r = await fetch(`/api/moradores?${qs}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
       const j = await r.json().catch(() => null)
       if (!r.ok) {
         if (searchDelayRef.current) { clearTimeout(searchDelayRef.current); searchDelayRef.current = null }

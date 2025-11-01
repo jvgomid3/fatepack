@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { getSupabaseClient } from "../../../lib/supabaseClient"
 import bcrypt from "bcryptjs"
 import { signToken } from "../../../lib/server/auth"
+import { createErrorResponse } from "../../../lib/server/errorHandler"
 
 export const dynamic = "force-dynamic"
 
@@ -15,10 +16,8 @@ export async function POST(req: Request) {
     const providedRaw = body.password ?? body.senha ?? ""
     const provided = String(providedRaw).trim()
 
-    console.log("[/api/login] payload:", { identifier, passwordExists: !!provided })
-
     if (!identifier || !provided) {
-      return NextResponse.json({ error: "Missing username or password" }, { status: 400 })
+      return NextResponse.json({ error: "Insira usuário e senha." }, { status: 400 })
     }
 
     // tenta por email primeiro
@@ -41,7 +40,6 @@ export async function POST(req: Request) {
     }
 
     const { data, error } = result
-    console.log("[/api/login] supabase result:", { error: error ? error.message : null, found: !!data, sample: data ? { id: data.id ?? data.id_usuario, email: data.email, nome: data.nome, senha: data.senha ?? data.senha_hash ?? null } : null })
 
     if (error || !data) {
       return NextResponse.json({ error: "E-mail ou senha incorretos", detail: error?.message ?? "no row" }, { status: 401 })
@@ -61,7 +59,6 @@ export async function POST(req: Request) {
       // compatibilidade com senhas legadas em texto puro
       match = stored.trim() === provided
     }
-    console.log("[/api/login] compare", { usedBcrypt: /^\$2[aby]\$/.test(stored), match })
     if (!match) {
       return NextResponse.json({ error: "E-mail ou senha incorretos", detail: "password_mismatch" }, { status: 401 })
     }
@@ -93,6 +90,6 @@ export async function POST(req: Request) {
     })
   } catch (e: any) {
     console.error("POST /api/login error:", e?.message ?? e)
-    return NextResponse.json({ error: "SERVER_ERROR", detail: String(e?.message ?? e) }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }

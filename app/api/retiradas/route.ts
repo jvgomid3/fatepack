@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 import { getUserFromRequest } from "../../../lib/server/auth"
+import { createErrorResponse } from "../../../lib/server/errorHandler"
 
 export const dynamic = "force-dynamic"
 
@@ -41,10 +42,14 @@ function formatBRDateTimeSaoPaulo(iso: string): string {
 }
 
 export async function POST(req: Request) {
-  // Keep POST public for minimal-change compatibility: the UI posts to
-  // /api/retiradas without an Authorization header in some flows. If you
-  // want stricter protection, re-enable auth checks here and update the UI
-  // to send the Bearer token on submit.
+  // Require authentication and admin role for confirming package pickup
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  
+  const role = String(user?.tipo || "").toLowerCase()
+  if (!["admin", "porteiro", "síndico", "sindico"].includes(role)) {
+    return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
+  }
 
   try {
     const body = await req.json().catch(() => ({}))
@@ -71,7 +76,8 @@ export async function POST(req: Request) {
     const data_retirada_fmt = formatBRDateTimeSaoPaulo(String(data?.data_retirada))
     return NextResponse.json({ ok: true, ...data, data_retirada_fmt }, { status: 201 })
   } catch (e: any) {
-    return NextResponse.json({ error: "Falha ao registrar retirada", detail: e?.message }, { status: 500 })
+    console.error("POST /api/retiradas error:", e?.message || e)
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }
 
@@ -96,6 +102,7 @@ export async function GET(req: Request) {
     }))
     return NextResponse.json({ ok: true, rows }, { status: 200 })
   } catch (e: any) {
-    return NextResponse.json({ error: "Falha ao buscar retiradas", detail: e?.message }, { status: 500 })
+    console.error("GET /api/retiradas error:", e?.message || e)
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }

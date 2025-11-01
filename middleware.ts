@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-const PUBLIC_API = new Set(["/api/usuario", "/api/redefinir-senha", "/api/login"])
+const PUBLIC_API = new Set(["/api/auth/verificar-email", "/api/redefinir-senha", "/api/login"])
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl

@@ -67,7 +67,11 @@ export default function AvisoPage() {
   useEffect(() => {
     const loadAvisos = async () => {
       try {
-        const res = await fetch(`/api/aviso?active=all&ts=${Date.now()}`, { cache: "no-store" })
+        const token = localStorage.getItem("token") || ""
+        const res = await fetch(`/api/aviso?active=all&ts=${Date.now()}`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
         const j = await res.json().catch(() => null)
         if (res.ok && Array.isArray(j?.avisos)) setAvisosAtivos(j.avisos)
         else setAvisosAtivos([])

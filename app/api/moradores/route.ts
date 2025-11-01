@@ -3,6 +3,7 @@ import { getUserFromRequest } from "../../../lib/server/auth"
 import { getSupabaseClient } from "../../../lib/supabaseClient"
 import { createClient } from "@supabase/supabase-js"
 import bcrypt from "bcryptjs"
+import { createErrorResponse } from "../../../lib/server/errorHandler"
 
 export const dynamic = "force-dynamic"
 
@@ -32,9 +33,33 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const nome = sanitizeStr(url.searchParams.get("nome"))
     const email = sanitizeStr(url.searchParams.get("email"))
-    const bloco = sanitizeStr(url.searchParams.get("bloco"))
+    const blocoParam = sanitizeStr(url.searchParams.get("bloco"))
     // aceita tanto "apartamento" quanto "apto" na query
-    const apartamento = sanitizeStr(url.searchParams.get("apartamento") || url.searchParams.get("apto"))
+    const apartamentoParam = sanitizeStr(url.searchParams.get("apartamento") || url.searchParams.get("apto"))
+
+    // CRITICAL SECURITY: moradores comuns só podem ver dados do próprio apartamento
+    // Admin/porteiro/síndico podem ver todos os apartamentos
+    const userRole = String(user?.tipo || "").toLowerCase()
+    const isPrivileged = ["admin", "porteiro", "síndico", "sindico"].includes(userRole)
+    
+    let bloco: string | undefined
+    let apartamento: string | undefined
+    
+    if (isPrivileged) {
+      // Admin/porteiro podem usar os parâmetros da query livremente
+      bloco = blocoParam
+      apartamento = apartamentoParam
+    } else {
+      // Morador comum: forçar bloco e apto do próprio usuário
+      // Ignora qualquer parâmetro que o cliente tenha enviado
+      bloco = user.bloco
+      apartamento = user.apto || user.apartamento
+      
+      // Se o morador não tem bloco/apto definido, retorna vazio
+      if (!bloco || !apartamento) {
+        return NextResponse.json({ ok: true, items: [], moradores: [] })
+      }
+    }
 
     const supabase = getSupabaseClient()
     let query = supabase
@@ -66,7 +91,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, items, moradores })
   } catch (e: any) {
     console.error("/api/moradores GET error:", e?.message || e)
-    return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }
 
@@ -254,7 +279,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, item, vinculoCriado: !!(linkIns && (linkIns as any).data), vinculo: (linkIns && (linkIns as any).data) || null })
   } catch (e: any) {
     console.error("/api/moradores POST error:", e?.message || e)
-    return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }
 
@@ -465,7 +490,7 @@ export async function PUT(req: Request) {
   return NextResponse.json({ ok: true, item, status, apartmentTransitioned: apartmentChanged, vinculo: (data as any)._newVinculo || null })
   } catch (e: any) {
     console.error("/api/moradores PUT error:", e?.message || e)
-    return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }
 
@@ -544,6 +569,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true, removed: (delUser.data || []).length }, { status: 200 })
   } catch (e: any) {
     console.error("/api/moradores DELETE error:", e?.message || e)
-    return NextResponse.json({ error: "SERVER_ERROR", detail: e?.message || String(e) }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }

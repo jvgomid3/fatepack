@@ -95,11 +95,14 @@ export default function InicioPage() {
         // tenta buscar o nome atualizado no banco a partir do email salvo
         const email = localStorage.getItem("userEmail") || ""
         const fallbackName = localStorage.getItem("userName") || ""
+        const token = localStorage.getItem("token") || ""
         if (email || fallbackName) {
           const qs = email
             ? `email=${encodeURIComponent(email)}`
             : `nome=${encodeURIComponent(fallbackName)}`
-          fetch(`/api/usuario?${qs}`)
+          fetch(`/api/usuario?${qs}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          })
             .then((r) => r.ok ? r.json() : null)
             .then((j) => {
               if (j?.nome) {
@@ -204,7 +207,11 @@ export default function InicioPage() {
       try {
         const t = (localStorage.getItem("userType") || "").toLowerCase()
         if (t === "admin") { setActiveAvisos([]); return }
-        const res = await fetch(`/api/aviso?active=all&ts=${Date.now()}`, { cache: "no-store" })
+        const token = localStorage.getItem("token") || ""
+        const res = await fetch(`/api/aviso?active=all&ts=${Date.now()}`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
         const j = await res.json().catch(() => null)
         if (res.ok && Array.isArray(j?.avisos)) setActiveAvisos(j.avisos)
         else setActiveAvisos([])
@@ -225,7 +232,10 @@ export default function InicioPage() {
         return
       }
       try {
-        const res = await fetch(`/api/moradores?bloco=${encodeURIComponent(userBlock)}&apto=${encodeURIComponent(userApartment)}`)
+        const token = localStorage.getItem("token") || ""
+        const res = await fetch(`/api/moradores?bloco=${encodeURIComponent(userBlock)}&apto=${encodeURIComponent(userApartment)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
         const j = await res.json().catch(() => null)
         if (res.ok && j?.moradores) setMoradores(j.moradores)
         else setMoradores([])

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { Pool } from "pg"
+import { getUserFromRequest } from "../../../lib/server/auth"
 
 function makePgConfig() {
   return {
@@ -19,9 +20,22 @@ let _pool: any = null
 const getPool = () => (_pool ??= new Pool(makePgConfig()))
 
 export async function GET(req: Request) {
+  // Require authentication and validate ownership
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const email = (searchParams.get("email") || "").trim()
   if (!email) return NextResponse.json({ error: "email is required" }, { status: 400 })
+
+  // Check if user can access this email's data
+  const userRole = String(user?.tipo || "").toLowerCase()
+  const isPrivileged = ["admin", "porteiro", "síndico", "sindico"].includes(userRole)
+  
+  // Only allow if privileged or requesting own email
+  if (!isPrivileged && String(user?.email || "").toLowerCase() !== email.toLowerCase()) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   try {
     const pool = getPool()

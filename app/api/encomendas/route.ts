@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { getUserFromRequest } from "../../../lib/server/auth"
 import { getSupabaseAdmin } from "../../../lib/server/supabaseAdmin"
 import { sendPush } from "../../../lib/server/push"
+import { createErrorResponse } from "../../../lib/server/errorHandler"
 
 const TABLE = "encomenda"
 
@@ -121,7 +122,7 @@ export async function GET(req: Request) {
     )
   } catch (e: any) {
     console.error("GET /api/encomendas:", e?.message)
-    return NextResponse.json({ error: "DB_ERROR" }, { status: 500 })
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }
 
@@ -166,8 +167,24 @@ export async function POST(req: Request) {
   const nomeInput = String(body.nome ?? "").trim()
   const recebidoPor = String(body.recebido_por ?? user.nome ?? "").trim()
 
+  // Input validation
   if (!empresa || !bloco || !apartamento) {
     return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
+  }
+  
+  // Validate empresa length (prevent overly long strings)
+  if (empresa.length > 100) {
+    return NextResponse.json({ error: "Nome da empresa muito longo (máx 100 caracteres)" }, { status: 400 })
+  }
+  
+  // Validate bloco and apartamento are numeric after padding
+  if (!/^\d+$/.test(bloco) || !/^\d+$/.test(apartamento)) {
+    return NextResponse.json({ error: "Bloco e apartamento devem ser numéricos" }, { status: 400 })
+  }
+  
+  // Validate nome if provided
+  if (nomeInput && nomeInput.length > 200) {
+    return NextResponse.json({ error: "Nome muito longo (máx 200 caracteres)" }, { status: 400 })
   }
 
   try {
@@ -292,9 +309,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: inserted?.id_encomenda, destinatario })
   } catch (e: any) {
     console.error("POST /api/encomendas:", e?.message)
-    return NextResponse.json(
-      { error: "DB_ERROR", message: e?.message },
-      { status: 500 }
-    )
+    return NextResponse.json(createErrorResponse(e), { status: 500 })
   }
 }

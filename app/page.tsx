@@ -29,18 +29,26 @@ function formatPhoneBR(input: string): string {
 }
 
 export default function HomePage() {
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  
   // Se já estiver autenticado (token no localStorage), redireciona direto para a área logada
   React.useEffect(() => {
     try {
       const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (!t) return
+      if (!t) {
+        setIsCheckingAuth(false)
+        return
+      }
       const role = (localStorage.getItem('userType') || '').toLowerCase()
       const dest = role === 'admin' ? '/inicio-admin' : '/inicio'
       if (window.location.pathname !== dest) {
         window.location.replace(dest)
       }
-    } catch {}
+    } catch {
+      setIsCheckingAuth(false)
+    }
   }, [])
+  
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     name: "",
@@ -312,6 +320,35 @@ export default function HomePage() {
     background: "#e6ffed",          // verde claro
     border: "1px solid #22c55e",    // borda verde
     color: "#166534",               // texto verde escuro
+  }
+
+  // Mostra loading enquanto verifica autenticação para evitar flash de conteúdo
+  if (isCheckingAuth) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'var(--background)',
+      }}>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `
+        }} />
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid var(--border)',
+          borderTopColor: 'var(--primary)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    )
   }
 
   return (

@@ -30,6 +30,48 @@ const nextConfig = {
       { source: '/apple-touch-icon-120x120.png', destination: '/placeholder-logo.png' },
     ]
   },
+  async headers() {
+    return [
+      {
+        // Apply security headers to all API routes
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            // In production, replace with your actual domain(s)
+            // For development, allowing localhost
+            value: process.env.NODE_ENV === 'production' 
+              ? process.env.NEXT_PUBLIC_APP_URL || 'https://yourdomain.com'
+              : '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET,DELETE,PATCH,POST,PUT',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Authorization, Content-Type, X-Requested-With',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig
