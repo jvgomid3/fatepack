@@ -30,38 +30,20 @@ function nowInSaoPauloISO(): string {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
+// Formata timestamp para formato brasileiro (dd/MM/yyyy HH:mm)
+// O banco já armazena em horário de SP, então apenas formatamos sem converter timezone
 function formatBRDateTimeSaoPaulo(iso: string): string {
-  // Se o timestamp vier sem timezone (ex: "2025-11-01 21:43:00"),
-  // assumimos que já está em horário de São Paulo
-  const d = new Date(iso)
+  // Parse direto: "2025-11-01 21:57:00" ou "2025-11-01T21:57:00"
+  const cleanIso = iso.replace(' ', 'T').split('.')[0] // Remove milissegundos se tiver
   
-  // Se a string não tem 'T' ou 'Z' ou offset, é timestamp naive - tratamos como SP
-  const hasTimezone = iso.includes('T') || iso.includes('Z') || iso.includes('+') || iso.includes('-03')
+  // Parse como se fosse local (sem conversão de timezone)
+  const parts = cleanIso.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/)
+  if (!parts) return iso // Fallback: retorna original
   
-  if (!hasTimezone) {
-    // Timestamp naive: parsear como se fosse SP adicionando offset
-    const [datePart, timePart] = iso.split(' ')
-    const isoWithOffset = `${datePart}T${timePart || '00:00:00'}-03:00`
-    return new Intl.DateTimeFormat("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date(isoWithOffset))
-  }
+  const [_, year, month, day, hour, minute] = parts
   
-  // Se tem timezone, usar formatação com timeZone
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(d)
+  // Retorna formatado sem conversão: o valor do banco já está correto
+  return `${day}/${month}/${year} ${hour}:${minute}`
 }
 
 export async function POST(req: Request) {
