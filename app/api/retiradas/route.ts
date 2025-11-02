@@ -11,7 +11,8 @@ const capFirst = (s: string) => {
   return s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1)
 }
 
-// Gera timestamp no fuso de São Paulo (ISO com offset -03:00, igual /api/encomendas)
+// Gera timestamp no fuso de São Paulo SEM offset (para Postgres salvar como está)
+// Retorna formato: "2025-11-01 21:43:00" (hora local de SP, sem timezone)
 function nowInSaoPauloISO(): string {
   const now = new Date()
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -25,11 +26,33 @@ function nowInSaoPauloISO(): string {
     hour12: false,
   })
   const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value])) as Record<string, string>
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}-03:00`
+  // Retorna sem offset para Postgres armazenar o valor literal (21:43 vira 21:43 no banco)
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 function formatBRDateTimeSaoPaulo(iso: string): string {
+  // Se o timestamp vier sem timezone (ex: "2025-11-01 21:43:00"),
+  // assumimos que já está em horário de São Paulo
   const d = new Date(iso)
+  
+  // Se a string não tem 'T' ou 'Z' ou offset, é timestamp naive - tratamos como SP
+  const hasTimezone = iso.includes('T') || iso.includes('Z') || iso.includes('+') || iso.includes('-03')
+  
+  if (!hasTimezone) {
+    // Timestamp naive: parsear como se fosse SP adicionando offset
+    const [datePart, timePart] = iso.split(' ')
+    const isoWithOffset = `${datePart}T${timePart || '00:00:00'}-03:00`
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(isoWithOffset))
+  }
+  
+  // Se tem timezone, usar formatação com timeZone
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
     day: "2-digit",

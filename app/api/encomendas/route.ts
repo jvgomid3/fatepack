@@ -8,8 +8,43 @@ import { createErrorResponse } from "../../../lib/server/errorHandler"
 
 const TABLE = "encomenda"
 
-// Gera um timestamp no fuso de São Paulo.
-// Retorna string ISO com offset "-03:00" (ex.: 2025-09-29T14:05:23-03:00)
+// Formata timestamp para formato brasileiro (dd/MM/yyyy HH:mm)
+function formatBRDateTimeSaoPaulo(iso: string): string {
+  // Se o timestamp vier sem timezone (ex: "2025-11-01 21:43:00"),
+  // assumimos que já está em horário de São Paulo
+  const d = new Date(iso)
+  
+  // Se a string não tem 'T' ou 'Z' ou offset, é timestamp naive - tratamos como SP
+  const hasTimezone = iso.includes('T') || iso.includes('Z') || iso.includes('+') || iso.includes('-03')
+  
+  if (!hasTimezone) {
+    // Timestamp naive: parsear como se fosse SP adicionando offset
+    const [datePart, timePart] = iso.split(' ')
+    const isoWithOffset = `${datePart}T${timePart || '00:00:00'}-03:00`
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(isoWithOffset))
+  }
+  
+  // Se tem timezone, usar formatação com timeZone
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d)
+}
+
+// Gera timestamp no fuso de São Paulo SEM offset (para Postgres salvar como está)
+// Retorna formato: "2025-11-01 21:43:00" (hora local de SP, sem timezone)
 function nowInSaoPauloISO(): string {
   const now = new Date()
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -23,9 +58,8 @@ function nowInSaoPauloISO(): string {
     hour12: false,
   })
   const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value])) as Record<string, string>
-  // Brasil atualmente não usa horário de verão, offset fixo -03:00.
-  // Se no futuro mudar, considerar calcular offset dinamicamente.
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}-03:00`
+  // Retorna sem offset para Postgres armazenar o valor literal (21:43 vira 21:43 no banco)
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 export async function GET(req: Request) {
@@ -46,18 +80,23 @@ export async function GET(req: Request) {
       if (error) throw error
       // flatten latest retirada by sorting client-side (Supabase returns arrays for one-to-many by default if configured)
       return NextResponse.json(
-        (data || []).map((e: any) => ({
-          id: e.id_encomenda,
-          empresa_entrega: e.empresa_entrega,
-          data_recebimento: e.data_recebimento,
-          id_apartamento: e.id_apartamento,
-          bloco: e.bloco,
-          apartamento: e.apartamento,
-          nome: e.nome,
-          recebido_por: e.recebido_por,
-          retirado_por: Array.isArray(e.retirada) && e.retirada.length ? e.retirada[0].nome_retirou : null,
-          data_retirada: Array.isArray(e.retirada) && e.retirada.length ? e.retirada[0].data_retirada : null,
-        }))
+        (data || []).map((e: any) => {
+          const dataRetirada = Array.isArray(e.retirada) && e.retirada.length ? e.retirada[0].data_retirada : null
+          return {
+            id: e.id_encomenda,
+            empresa_entrega: e.empresa_entrega,
+            data_recebimento: e.data_recebimento,
+            id_apartamento: e.id_apartamento,
+            bloco: e.bloco,
+            apartamento: e.apartamento,
+            nome: e.nome,
+            recebido_por: e.recebido_por,
+            retirado_por: Array.isArray(e.retirada) && e.retirada.length ? e.retirada[0].nome_retirou : null,
+            data_retirada: dataRetirada,
+            // Adicionar data_retirada formatado (assumindo que já está em UTC-3 no banco)
+            data_retirada_fmt: dataRetirada ? formatBRDateTimeSaoPaulo(String(dataRetirada)) : null,
+          }
+        })
       )
     }
 

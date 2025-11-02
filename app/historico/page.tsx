@@ -209,7 +209,9 @@ export default function HistoricoPage() {
               return local.dataRetirada
             }
           } catch {}
-          return formatBRDateTimeAssumeSaoPaulo(row.data_retirada ?? row.data_retirada_fmt)
+          // Usar diretamente o data_retirada_fmt do servidor (já formatado)
+          // Se não existir, formatar o data_retirada como fallback
+          return row.data_retirada_fmt || (row.data_retirada ? formatBRDateTimeAssumeSaoPaulo(row.data_retirada) : "")
         })(),
       }))
 
