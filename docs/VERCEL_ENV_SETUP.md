@@ -26,8 +26,9 @@ Clique em **"Add New"** e adicione UMA POR VEZ:
 
 #### **NEXT_PUBLIC_FIREBASE_API_KEY**
 ```
-AIzaSyBLERXDIP6sIRrFqsWSw3TWeDyAz7_8fDA
+AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real obtido no Firebase Console**
 - Environment: `Production`, `Preview`, `Development` (marcar todas)
 
 #### **NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN**
@@ -50,26 +51,30 @@ fatepack.firebasestorage.app
 
 #### **NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID**
 ```
-367593974847
+XXXXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real obtido no Firebase Console**
 - Environment: `Production`, `Preview`, `Development`
 
 #### **NEXT_PUBLIC_FIREBASE_APP_ID**
 ```
-1:367593974847:web:839ca00f5b67ff65b75c8a
+1:XXXXXXXXXXXX:web:XXXXXXXXXXXXXXXXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real obtido no Firebase Console**
 - Environment: `Production`, `Preview`, `Development`
 
 #### **NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID**
 ```
-G-L9VD0M035H
+G-XXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real obtido no Firebase Console**
 - Environment: `Production`, `Preview`, `Development`
 
 #### **NEXT_PUBLIC_FIREBASE_VAPID_KEY**
 ```
-BEHMtosxw6Q2vdV4SnjVV0wpaGavSH4qb7GuUW0Skfd3H67hb1KY0TbB4a35kIFkNIaR-lsFBAQIrAj3_SoCrNU
+BXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real obtido em Firebase Console → Cloud Messaging → Web Push certificates**
 - Environment: `Production`, `Preview`, `Development`
 
 ---
@@ -85,8 +90,9 @@ postgresql://usuario:senha@host:5432/database
 
 #### **NEXT_PUBLIC_VAPID_PUBLIC_KEY**
 ```
-BEHMtosxw6Q2vdV4SnjVV0wpaGavSH4qb7GuUW0Skfd3H67hb1KY0TbB4a35kIFkNIaR-lsFBAQIrAj3_SoCrNU
+BXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
+⚠️ **Substitua pelo valor real (mesma chave pública VAPID do Firebase)**
 
 #### **VAPID_PRIVATE_KEY**
 ```
