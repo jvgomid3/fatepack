@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
 import ServiceWorkerRegister from "@/app/components/ServiceWorkerRegister"
+import FirebaseInit from "@/app/components/FirebaseInit"
 
 export const metadata: Metadata = {
   /* Updated metadata for FatePack branding */
@@ -43,6 +44,8 @@ export default function RootLayout({
         {children}
         {/* Registra o Service Worker para permitir instalação como app (PWA) */}
         <ServiceWorkerRegister />
+        {/* Inicializa Firebase Analytics e Cloud Messaging */}
+        <FirebaseInit />
       </body>
     </html>
   )
