@@ -10,6 +10,16 @@ export default function FirebaseInit() {
 
     const initFirebase = async () => {
       try {
+        // Verificar se Firebase está configurado
+        const isConfigured = 
+          process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+          process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        
+        if (!isConfigured) {
+          console.warn("[Firebase] Firebase não configurado. Pulando inicialização.")
+          return
+        }
+
         // 1. Verificar permissão atual
         if (!("Notification" in window)) {
           console.warn("[Firebase] Notificações não suportadas neste navegador")

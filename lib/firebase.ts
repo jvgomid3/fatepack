@@ -4,28 +4,49 @@ import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging
 
 // 🔥 Configuração do Firebase - SUBSTITUIR com suas credenciais do Firebase Console
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Opcional
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "", // Opcional
 }
 
-// Inicializar Firebase (singleton)
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+// Validar configuração
+const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
+if (!isFirebaseConfigured && typeof window !== "undefined") {
+  console.warn("[Firebase] Configuração incompleta. Firebase será desabilitado.")
+}
+
+// Inicializar Firebase (singleton) com tratamento de erro
+let app: any = null
+if (isFirebaseConfigured) {
+  try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+  } catch (error) {
+    console.error("[Firebase] Erro ao inicializar app:", error)
+  }
+}
 
 // Analytics (apenas no browser)
 let analytics: Analytics | null = null
-if (typeof window !== "undefined") {
-  analytics = getAnalytics(app)
+if (typeof window !== "undefined" && app) {
+  try {
+    analytics = getAnalytics(app)
+  } catch (error) {
+    console.error("[Firebase] Erro ao inicializar Analytics:", error)
+  }
 }
 
 // Messaging (apenas no browser)
 let messaging: Messaging | null = null
-if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  messaging = getMessaging(app)
+if (typeof window !== "undefined" && app && "serviceWorker" in navigator) {
+  try {
+    messaging = getMessaging(app)
+  } catch (error) {
+    console.error("[Firebase] Erro ao inicializar Messaging:", error)
+  }
 }
 
 // 📊 Funções de Analytics
