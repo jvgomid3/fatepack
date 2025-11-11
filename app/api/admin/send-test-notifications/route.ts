@@ -66,24 +66,31 @@ export async function POST(req: Request) {
 
     console.log(`[Test] ✅ Apartamento encontrado: ID ${aptoData.id_apartamento}`)
 
-    // 3. Buscar moradores do apartamento
-    const { data: residentRows } = await supa
-      .from("usuario")
+    // 3. Buscar moradores do apartamento via tabela de vínculo
+    const { data: vinculos, error: vinculoError } = await supa
+      .from("usuario_apartamento")
       .select("id_usuario")
       .eq("id_apartamento", aptoData.id_apartamento)
 
-    if (!residentRows || residentRows.length === 0) {
-      console.error(`[Test] ❌ Nenhum morador encontrado`)
+    if (vinculoError || !vinculos || vinculos.length === 0) {
+      console.error(`[Test] ❌ Nenhum morador encontrado:`, vinculoError)
       return NextResponse.json(
-        { error: "Nenhum morador encontrado neste apartamento" },
+        { 
+          error: "Nenhum morador encontrado neste apartamento",
+          debug: {
+            apartamento_id: aptoData.id_apartamento,
+            error: vinculoError?.message,
+            hint: "Verifique se existem vínculos na tabela usuario_apartamento"
+          }
+        },
         { status: 404 }
       )
     }
 
-    const residentIds = residentRows.map((r: any) => r.id_usuario)
+    const residentIds = vinculos.map((v: any) => v.id_usuario)
     console.log(`[Test] 👥 Moradores encontrados: ${residentIds.length}`)
 
-    // 3. Buscar subscriptions dos moradores
+    // 4. Buscar subscriptions dos moradores
     const { data: subs, error: subsError } = await supa
       .from("push_subscription")
       .select("endpoint, p256dh, auth, user_id")
