@@ -9,12 +9,12 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supa = createClient(supabaseUrl, supabaseKey)
 
 /**
- * Endpoint administrativo para enviar múltiplas notificações de teste
- * Usado para popular Firebase Analytics com eventos
+ * Endpoint administrativo para enviar 1 notificação de teste por vez
+ * Usado para popular Firebase Analytics com eventos (envio individual com debug)
  */
 export async function POST(req: Request) {
   try {
-    const { bloco, apartamento, quantidade = 10 } = await req.json()
+    const { bloco, apartamento } = await req.json()
 
     if (!bloco || !apartamento) {
       return NextResponse.json(
@@ -22,6 +22,8 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    console.log(`[Test] 🧪 Enviando notificação para Bloco ${bloco}, Apto ${apartamento}`)
 
     // 1. Buscar apartamento
     const { data: aptoData, error: aptoError } = await supa
@@ -32,11 +34,17 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (aptoError || !aptoData) {
+      console.error(`[Test] ❌ Apartamento não encontrado:`, aptoError)
       return NextResponse.json(
-        { error: "Apartamento não encontrado" },
+        { 
+          error: `Apartamento ${bloco}/${apartamento} não encontrado`, 
+          debug: aptoError?.message 
+        },
         { status: 404 }
       )
     }
+
+    console.log(`[Test] ✅ Apartamento encontrado: ID ${aptoData.id_apartamento}`)
 
     // 2. Buscar moradores do apartamento
     const { data: residentRows } = await supa
@@ -45,6 +53,7 @@ export async function POST(req: Request) {
       .eq("id_apartamento", aptoData.id_apartamento)
 
     if (!residentRows || residentRows.length === 0) {
+      console.error(`[Test] ❌ Nenhum morador encontrado`)
       return NextResponse.json(
         { error: "Nenhum morador encontrado neste apartamento" },
         { status: 404 }
@@ -52,6 +61,7 @@ export async function POST(req: Request) {
     }
 
     const residentIds = residentRows.map((r: any) => r.id_usuario)
+    console.log(`[Test] 👥 Moradores encontrados: ${residentIds.length}`)
 
     // 3. Buscar subscriptions dos moradores
     const { data: subs, error: subsError } = await supa
@@ -60,84 +70,95 @@ export async function POST(req: Request) {
       .in("user_id", residentIds)
 
     if (subsError || !subs || subs.length === 0) {
+      console.error(`[Test] ❌ Nenhuma subscription encontrada:`, subsError)
       return NextResponse.json(
-        { error: "Nenhuma subscription ativa encontrada para este apartamento" },
+        { 
+          error: "Nenhuma subscription ativa encontrada para este apartamento",
+          debug: {
+            moradores: residentIds.length,
+            error: subsError?.message,
+            hint: "O usuário precisa permitir notificações no navegador/app primeiro"
+          }
+        },
         { status: 404 }
       )
     }
 
-    console.log(`[Test Notifications] Enviando ${quantidade} notificações para ${subs.length} usuário(s)`)
+    console.log(`[Test] 🔔 Subscriptions encontradas: ${subs.length}`)
 
-    // 4. Enviar múltiplas notificações de teste
-    const notifications = []
-    const tipos = [
-      { title: "📦 Nova encomenda", body: "Encomenda de teste chegou!", tag: "test-encomenda" },
-      { title: "📢 Aviso importante", body: "Teste de aviso geral", tag: "test-aviso" },
-      { title: "✅ Retirada confirmada", body: "Teste de confirmação", tag: "test-retirada" },
-      { title: "🔔 Lembrete", body: "Você tem encomendas pendentes", tag: "test-lembrete" },
-      { title: "🎉 Bem-vindo", body: "Teste de boas-vindas", tag: "test-welcome" },
-    ]
+    // 4. Criar payload de teste
+    const now = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })
+    const randomEmoji = ["📦", "📢", "✅", "🔔", "🎉"][Math.floor(Math.random() * 5)]
+    
+    const payload = {
+      title: `${randomEmoji} Teste ${Date.now().toString().slice(-4)}`,
+      body: `Notificação de teste - ${now}`,
+      url: "/historico",
+      tag: `test-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    }
 
-    for (let i = 0; i < quantidade; i++) {
-      const tipo = tipos[i % tipos.length]
-      const timestamp = new Date().toISOString()
-      
-      const payload = {
-        title: `${tipo.title} #${i + 1}`,
-        body: `${tipo.body} (${timestamp})`,
-        url: "/encomendas",
-        tag: `${tipo.tag}-${Date.now()}-${i}`,
-        timestamp,
-      }
+    console.log(`[Test] 📤 Payload:`, payload)
 
-      // Enviar para todos os usuários
-      const results = await Promise.allSettled(
-        subs.map((s: any) =>
-          sendPush(
+    // 5. Enviar para TODAS as subscriptions
+    const results = await Promise.allSettled(
+      subs.map(async (s: any, index: number) => {
+        try {
+          console.log(`[Test] 📨 Enviando para subscription ${index + 1}/${subs.length}...`)
+          
+          await sendPush(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payload
           )
-        )
-      )
-
-      const sucessos = results.filter((r) => r.status === "fulfilled").length
-      const falhas = results.filter((r) => r.status === "rejected").length
-
-      notifications.push({
-        numero: i + 1,
-        payload,
-        sucessos,
-        falhas,
+          
+          console.log(`[Test] ✅ Enviada com sucesso para ${index + 1}`)
+          return { success: true, user_id: s.user_id, endpoint: s.endpoint.substring(0, 60) }
+        } catch (error: any) {
+          console.error(`[Test] ❌ Erro ao enviar para ${index + 1}:`, {
+            message: error.message,
+            statusCode: error.statusCode,
+            body: error.body
+          })
+          
+          return { 
+            success: false, 
+            user_id: s.user_id, 
+            error: error.message,
+            statusCode: error.statusCode 
+          }
+        }
       })
+    )
 
-      // Pequeno delay entre notificações para não sobrecarregar
-      if (i < quantidade - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
-    }
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length
+    const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success)).length
 
-    const totalSucessos = notifications.reduce((sum, n) => sum + n.sucessos, 0)
-    const totalFalhas = notifications.reduce((sum, n) => sum + n.falhas, 0)
-
-    console.log(`[Test Notifications] Concluído: ${totalSucessos} sucessos, ${totalFalhas} falhas`)
+    console.log(`[Test] 🎯 Resultado: ${successful} sucesso, ${failed} falhas`)
 
     return NextResponse.json({
       ok: true,
-      message: `${quantidade} notificações enviadas com sucesso`,
+      message: successful > 0 
+        ? `✅ Notificação enviada com sucesso para ${successful} dispositivo(s)!`
+        : `❌ Falha ao enviar (${failed} erro(s))`,
       detalhes: {
-        bloco,
-        apartamento,
-        usuarios: subs.length,
-        notificacoes_enviadas: quantidade,
-        total_sucessos: totalSucessos,
-        total_falhas: totalFalhas,
+        apartamento: { bloco, apartamento, id: aptoData.id_apartamento },
+        moradores: residentIds.length,
+        subscriptions: subs.length,
+        sucessos: successful,
+        falhas: failed,
+        payload,
+        timestamp: now
       },
-      logs: notifications,
+      debug: results.map((r, i) => ({
+        subscription: i + 1,
+        status: r.status,
+        result: r.status === "fulfilled" ? r.value : { error: "rejected" }
+      }))
     })
   } catch (e: any) {
-    console.error("[Test Notifications] Erro:", e)
+    console.error("[Test] 💥 Erro crítico:", e)
     return NextResponse.json(
-      { error: e.message || "Erro ao enviar notificações" },
+      { error: e.message || "Erro ao enviar notificação", stack: e.stack },
       { status: 500 }
     )
   }
