@@ -25,19 +25,39 @@ export async function POST(req: Request) {
 
     console.log(`[Test] 🧪 Enviando notificação para Bloco ${bloco}, Apto ${apartamento}`)
 
-    // 1. Buscar apartamento
+    // 1. Buscar bloco pelo nome
+    const { data: blocoData, error: blocoError } = await supa
+      .from("bloco")
+      .select("id_bloco")
+      .eq("nome", bloco)
+      .maybeSingle()
+
+    if (blocoError || !blocoData) {
+      console.error(`[Test] ❌ Bloco não encontrado:`, blocoError)
+      return NextResponse.json(
+        { 
+          error: `Bloco "${bloco}" não encontrado`, 
+          debug: blocoError?.message 
+        },
+        { status: 404 }
+      )
+    }
+
+    console.log(`[Test] ✅ Bloco encontrado: ID ${blocoData.id_bloco}`)
+
+    // 2. Buscar apartamento pelo número e id_bloco
     const { data: aptoData, error: aptoError } = await supa
       .from("apartamento")
       .select("id_apartamento")
-      .eq("bloco", bloco)
-      .eq("apartamento", apartamento)
+      .eq("numero", apartamento)
+      .eq("id_bloco", blocoData.id_bloco)
       .maybeSingle()
 
     if (aptoError || !aptoData) {
       console.error(`[Test] ❌ Apartamento não encontrado:`, aptoError)
       return NextResponse.json(
         { 
-          error: `Apartamento ${bloco}/${apartamento} não encontrado`, 
+          error: `Apartamento ${apartamento} do ${bloco} não encontrado`, 
           debug: aptoError?.message 
         },
         { status: 404 }
@@ -46,7 +66,7 @@ export async function POST(req: Request) {
 
     console.log(`[Test] ✅ Apartamento encontrado: ID ${aptoData.id_apartamento}`)
 
-    // 2. Buscar moradores do apartamento
+    // 3. Buscar moradores do apartamento
     const { data: residentRows } = await supa
       .from("usuario")
       .select("id_usuario")
